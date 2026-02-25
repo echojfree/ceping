@@ -3,425 +3,305 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>职境纪元 x 大理财贸 - 电商实战舱</title>
+    <title>职境纪元 - 电商运营与数据操盘中枢</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <!-- Chart.js for Holland Hexagon -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;600;700&family=ZCOOL+KuaiLe&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Noto+Sans+SC:wght@400;700;900&display=swap');
 
         :root {
-            --p5-red: #e60012;
-            --p5-black: #1a1a1a;
-            --p5-white: #f5f5f5;
-            --neon-blue: #00f3ff;
-            --neon-yellow: #fde047;
-            --cyber-dark: #0f172a;
+            --term-bg: #020617; /* slate-950 */
+            --term-green: #10b981; /* emerald-500 */
+            --term-red: #ef4444; /* red-500 */
+            --term-cyan: #06b6d4; /* cyan-500 */
+            --term-yellow: #eab308; /* yellow-500 */
         }
 
         body {
-            font-family: 'Teko', 'ZCOOL KuaiLe', sans-serif;
-            background-color: var(--p5-black);
-            color: var(--p5-white);
+            font-family: 'JetBrains Mono', 'Noto Sans SC', monospace;
+            background-color: var(--term-bg);
+            color: var(--term-green);
             overflow: hidden;
             user-select: none;
-            letter-spacing: 0.05em;
         }
 
-        /* Screen transitions */
-        .screen {
-            position: absolute;
-            inset: 0;
-            display: none;
-            opacity: 0;
-            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            background: radial-gradient(circle at center, var(--p5-black) 0%, #000 100%);
+        /* Glitch effect for critical alerts */
+        .glitch-alert {
+            animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+            color: var(--term-red);
+            text-shadow: 2px 2px 0px rgba(255,0,0,0.5), -2px -2px 0px rgba(0,255,255,0.5);
         }
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) }
+            40% { transform: translate(-2px, -2px) }
+            60% { transform: translate(2px, 2px) }
+            80% { transform: translate(2px, -2px) }
+            100% { transform: translate(0) }
+        }
+
+        /* Scanlines */
+        .scanlines {
+            position: absolute; inset: 0; pointer-events: none; z-index: 999;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: var(--term-green); }
+
+        /* Panel Borders */
+        .cyber-panel {
+            background: rgba(2, 6, 23, 0.8);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.05);
+            position: relative;
+        }
+        .cyber-panel::before {
+            content: ''; position: absolute; top: -1px; left: -1px; width: 10px; height: 10px; border-top: 2px solid var(--term-green); border-left: 2px solid var(--term-green);
+        }
+        .cyber-panel::after {
+            content: ''; position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px; border-bottom: 2px solid var(--term-green); border-right: 2px solid var(--term-green);
+        }
+
+        /* Interactive Buttons */
+        .btn-cmd {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--term-green);
+            color: var(--term-green);
+            transition: all 0.1s;
+        }
+        .btn-cmd:hover:not(:disabled) {
+            background: var(--term-green);
+            color: var(--term-bg);
+            box-shadow: 0 0 15px var(--term-green);
+            transform: translateX(5px);
+        }
+        .btn-cmd:active:not(:disabled) { transform: translateX(2px); }
+        .btn-cmd:disabled { opacity: 0.5; cursor: not-allowed; border-color: #333; color: #555; }
+
+        /* Screens */
+        .screen { display: none; opacity: 0; transition: opacity 0.5s; position: absolute; inset: 0; }
         .screen.active { display: flex; opacity: 1; }
 
-        /* P5 Style Skew & Cut */
-        .skew-box { transform: skew(-8deg); border-radius: 2px; }
-        .unskew-text { transform: skew(8deg); display: inline-block; }
-        .cut-corner {
-            clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
-        }
-
-        /* Glitch & Halftone effects */
-        .halftone-bg {
-            background-image: radial-gradient(#333 1px, transparent 1px);
-            background-size: 10px 10px;
-        }
-        
-        .glitch-text { position: relative; display: inline-block; color: var(--p5-white); }
-        .glitch-text::before, .glitch-text::after {
-            content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        }
-        .glitch-text::before {
-            left: 2px; text-shadow: -2px 0 var(--neon-blue); clip: rect(24px, 550px, 90px, 0); animation: glitch-anim 2s infinite linear alternate-reverse;
-        }
-        .glitch-text::after {
-            left: -2px; text-shadow: -2px 0 var(--p5-red); clip: rect(85px, 550px, 140px, 0); animation: glitch-anim 2.5s infinite linear alternate-reverse;
-        }
-        @keyframes glitch-anim {
-            0% { clip: rect(33px, 9999px, 83px, 0); }
-            20% { clip: rect(72px, 9999px, 16px, 0); }
-            40% { clip: rect(51px, 9999px, 60px, 0); }
-            60% { clip: rect(10px, 9999px, 45px, 0); }
-            80% { clip: rect(98px, 9999px, 20px, 0); }
-            100% { clip: rect(4px, 9999px, 90px, 0); }
-        }
-
-        /* Buttons */
-        .btn-p5 {
-            position: relative; background: var(--p5-white); color: var(--p5-black);
-            border: 3px solid var(--p5-black); box-shadow: 6px 6px 0 var(--p5-red);
-            transition: transform 0.1s, box-shadow 0.1s; text-transform: uppercase;
-        }
-        .btn-p5:active { box-shadow: 0 0 0 var(--p5-red); transform: translate(6px, 6px) skew(-8deg); }
-        .btn-p5:hover { background: var(--p5-red); color: var(--p5-white); border-color: var(--p5-white); }
-        
-        .btn-hacker {
-            background: rgba(0,0,0,0.8); border: 2px solid var(--neon-blue); color: var(--neon-blue);
-            box-shadow: 4px 4px 0 rgba(0, 243, 255, 0.4); transition: all 0.2s;
-        }
-        .btn-hacker:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 15px var(--neon-blue); }
-
-        /* Bars */
-        .stat-bar { width: 100%; height: 20px; background: #222; border: 2px solid #555; position: relative; overflow: hidden; transform: skew(-15deg); }
-        .stat-fill-red { height: 100%; background: linear-gradient(90deg, #dc2626, #ef4444); width: 100%; transition: width 0.3s; }
-        .stat-fill-blue { height: 100%; background: linear-gradient(90deg, #2563eb, #3b82f6); width: 100%; transition: width 0.3s; }
-
-        /* Floating GMV Data */
-        .floating-data { position: absolute; color: rgba(255,255,255,0.1); font-family: monospace; font-size: 2rem; pointer-events: none; animation: floatUp 10s linear infinite; }
-        @keyframes floatUp { 0% { bottom: -10%; opacity: 0; } 50% { opacity: 0.2; } 100% { bottom: 110%; opacity: 0; } }
-
+        .typing-cursor::after { content: '█'; animation: blink 1s step-start infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
     </style>
 </head>
-<body>
-    
-    <!-- Background GMV Data floating simulation -->
-    <div id="data-particles" class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div class="floating-data left-[10%] delay-0">GMV: ¥1,294,500 ↑</div>
-        <div class="floating-data left-[30%] delay-[2s]">CVR: +4.2% 🚀</div>
-        <div class="floating-data left-[60%] delay-[5s]">Traffic: 89,400 PV</div>
-        <div class="floating-data left-[80%] delay-[3s]">ROI: 1:3.5</div>
-    </div>
+<body class="w-screen h-screen flex flex-col p-4 gap-4 relative">
+    <div class="scanlines"></div>
 
-    <!-- ==================== SCREEN 1: ATTRACT ==================== -->
-    <div id="screen-home" class="screen active flex-col items-center justify-center cursor-pointer halftone-bg" onclick="switchScreen('screen-hub')">
-        <!-- University Badge -->
-        <div class="absolute top-8 left-12 flex items-center gap-4 z-20 bg-black/50 p-3 cut-corner border border-red-500/50">
-            <div class="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center font-bold text-xl border-2 border-white">大理</div>
-            <div>
-                <div class="text-xl font-bold tracking-widest text-red-500">大理财贸职业院校</div>
-                <div class="text-xs text-gray-400 font-[monospace]">Dali Finance & Trade Vocational College</div>
-            </div>
-        </div>
-
-        <div class="text-center z-10 relative">
-            <div class="absolute -inset-10 bg-red-600 opacity-20 blur-[100px] rounded-full"></div>
-            <h2 class="text-3xl text-red-500 font-bold tracking-[0.5em] mb-4 glitch-text" data-text="E-COMMERCE EVOLUTION">E-COMMERCE EVOLUTION</h2>
-            <h1 class="text-[140px] font-black text-white mb-4 leading-none" style="text-shadow: 10px 10px 0 var(--p5-red), -4px -4px 0 var(--neon-blue);">
-                职境<span class="text-red-500">纪元</span>
-            </h1>
-            <div class="text-3xl bg-white text-black px-8 py-2 font-bold inline-block mb-16 skew-box transform -rotate-2">
-                <span class="unskew-text">电商实战·专属测试舱 (基于霍兰德 RIASEC)</span>
-            </div>
-            
-            <div class="mt-8 animate-pulse">
-                <button class="skew-box btn-p5 px-16 py-6 text-5xl font-bold font-['ZCOOL_KuaiLe']">
-                    <span class="unskew-text flex items-center gap-4">
-                        <i class="ph-fill ph-cursor-click text-5xl"></i>
-                        点击开启商战
-                    </span>
-                </button>
-            </div>
-        </div>
-
-        <div class="absolute bottom-0 w-full bg-red-600 text-white font-bold text-2xl py-3 border-y-4 border-black whitespace-nowrap overflow-hidden">
-            <div class="animate-[marquee_8s_linear_infinite] inline-block w-full font-[monospace]">
-                <span>WARNING // 拒绝枯燥问卷！准备应对真实的爆单危机、客诉轰炸与视觉对决！ // WARNING // 拒绝枯燥问卷！准备应对真实的爆单危机、客诉轰炸与视觉对决！</span>
-            </div>
-        </div>
-        <style> @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } } </style>
-    </div>
-
-    <!-- ==================== SCREEN 2: THE HUB (E-COMMERCE ROLES) ==================== -->
-    <div id="screen-hub" class="screen flex-col overflow-hidden relative halftone-bg">
-        <div class="absolute top-6 right-6 bg-black border-2 border-white p-3 skew-box z-20 shadow-[4px_4px_0_var(--p5-red)]">
-            <div class="unskew-text text-right">
-                <div class="text-red-500 text-sm font-bold">PLAYER_ID: DLCM_9921</div>
-                <div class="text-2xl font-bold text-white">选择实训剧本</div>
-            </div>
-        </div>
-
-        <div class="text-center mt-16 z-20">
-            <h2 class="text-5xl font-black text-white" style="text-shadow: 4px 4px 0 var(--neon-blue);">六大核心岗位 · 潜能探测区</h2>
-            <p class="text-gray-400 mt-2 text-xl font-[monospace]">基于 Holland 职业兴趣理论分析器</p>
-        </div>
-
-        <!-- 3 Main Tracks corresponding to the 6 roles -->
-        <div class="flex-1 flex items-center justify-center gap-10 z-10 px-12 perspective-[1000px] mt-4">
-            
-            <!-- Track 1: Ops & Data -->
-            <div class="relative group cursor-pointer transition-transform duration-300 hover:scale-105" onclick="switchScreen('screen-scenario')">
-                <div class="w-[340px] h-[480px] bg-black border-4 border-gray-700 cut-corner overflow-hidden relative shadow-2xl group-hover:border-neon-blue transition-colors">
-                    <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-40 group-hover:opacity-70 group-hover:scale-110 transition-all duration-500"></div>
-                    <div class="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
-                    
-                    <div class="absolute top-4 left-4 bg-neon-blue text-black font-bold px-3 py-1 font-[monospace]">ENTERPRISING / CONVENTIONAL</div>
-
-                    <div class="absolute bottom-0 w-full p-6">
-                        <div class="text-neon-blue font-bold mb-2 flex items-center gap-2"><i class="ph-fill ph-trend-up text-3xl"></i> 数据中枢塔</div>
-                        <h3 class="text-4xl font-bold text-white mb-2">电商运营 <span class="text-gray-400">&</span> 数据分析</h3>
-                        <p class="text-md text-gray-300 border-l-4 border-neon-blue pl-2">统筹盘货、大促策划、ROI核算、竞品拆解。适合对数字敏感、目标导向的操盘手。</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Track 2: Product & Visual (Featured) -->
-            <div class="relative group cursor-pointer transition-transform duration-300 hover:scale-110 transform scale-105" onclick="switchScreen('screen-scenario')">
-                <div class="w-[380px] h-[520px] bg-black border-4 border-red-600 cut-corner overflow-hidden relative shadow-[0_0_40px_rgba(230,0,18,0.4)] group-hover:shadow-[0_0_60px_rgba(230,0,18,0.8)]">
-                    <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-60 group-hover:opacity-90 group-hover:scale-110 transition-all duration-500"></div>
-                    <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
-                    
-                    <div class="absolute top-4 left-4 bg-red-600 text-white font-bold px-3 py-1 font-[monospace] animate-pulse">ARTISTIC / INVESTIGATIVE</div>
-                    <div class="absolute top-4 right-4 bg-yellow-400 text-black font-bold px-2 py-1 skew-box">HOT</div>
-
-                    <div class="absolute bottom-0 w-full p-6 bg-black/80 backdrop-blur-sm border-t-4 border-red-600">
-                        <div class="text-red-500 font-bold mb-2 flex items-center gap-2"><i class="ph-fill ph-paint-brush-broad text-3xl"></i> 创意先锋阵列</div>
-                        <h3 class="text-4xl font-bold text-white mb-2">视觉设计 <span class="text-gray-400">&</span> 产品开发</h3>
-                        <p class="text-lg text-gray-300 border-l-4 border-red-600 pl-2">高点击率主图设计、爆款挖掘、页面动效布局。用美学与创意引爆转化率。</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Track 3: CS & Storefront -->
-            <div class="relative group cursor-pointer transition-transform duration-300 hover:scale-105" onclick="switchScreen('screen-scenario')">
-                <div class="w-[340px] h-[480px] bg-black border-4 border-gray-700 cut-corner overflow-hidden relative shadow-2xl group-hover:border-green-500 transition-colors">
-                    <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-40 group-hover:opacity-70 group-hover:scale-110 transition-all duration-500"></div>
-                    <div class="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
-                    
-                    <div class="absolute top-4 left-4 bg-green-500 text-black font-bold px-3 py-1 font-[monospace]">SOCIAL / REALISTIC</div>
-
-                    <div class="absolute bottom-0 w-full p-6">
-                        <div class="text-green-400 font-bold mb-2 flex items-center gap-2"><i class="ph-fill ph-headset text-3xl"></i> 前线战壕</div>
-                        <h3 class="text-4xl font-bold text-white mb-2">客户服务 <span class="text-gray-400">&</span> 门店经营</h3>
-                        <p class="text-md text-gray-300 border-l-4 border-green-500 pl-2">危机公关、客诉化解、O2O门店现场统筹。高情商与极强抗压能力的实战场。</p>
-                    </div>
-                </div>
-            </div>
+    <!-- ==================== SCREEN 1: BOOT SEQUENCE ==================== -->
+    <div id="screen-boot" class="screen active flex-col justify-end p-8 pb-20">
+        <div id="boot-text" class="text-xl leading-relaxed opacity-80 mb-8"></div>
+        <div class="mt-8 opacity-0 transition-opacity duration-1000" id="boot-btn">
+            <button class="btn-cmd px-8 py-4 text-2xl font-bold flex items-center gap-4" onclick="initDashboard()">
+                <i class="ph-bold ph-terminal-window text-3xl"></i> INITIALIZE DALI.OPS.DASHBOARD
+            </button>
         </div>
     </div>
 
-    <!-- ==================== SCREEN 3: THE TRIAL (DOUBLE 11 CRISIS) ==================== -->
-    <div id="screen-scenario" class="screen flex-col bg-[#050505] relative">
-        <!-- Live Stream Data Overlay -->
-        <div class="absolute top-20 right-10 flex flex-col gap-2 z-0 opacity-40 pointer-events-none">
-            <div class="bg-red-900 text-white px-4 py-1 text-2xl font-[monospace] border border-red-500">LIVE VIEWS: 1.2M</div>
-            <div class="bg-red-900 text-white px-4 py-1 text-xl font-[monospace] border border-red-500 animate-pulse">WARNING: INVENTORY -5000</div>
-        </div>
-
-        <!-- HUD -->
-        <div class="relative z-10 w-full p-6 flex justify-between items-start">
-            <!-- NPC Stats -->
-            <div class="w-1/3">
-                <div class="bg-black/80 border-2 border-yellow-500 p-3 skew-box shadow-[4px_4px_0_var(--neon-yellow)]">
-                    <div class="unskew-text w-full">
-                        <div class="flex justify-between items-end mb-1">
-                            <span class="text-yellow-400 font-bold text-xl"><i class="ph-fill ph-warning-octagon"></i> 头部主播选品经理 - 王总</span>
-                            <span class="text-gray-400 text-sm">合作信任度 (Trust)</span>
-                        </div>
-                        <div class="stat-bar">
-                            <div class="stat-fill-red" id="npc-trust" style="width: 30%;"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Event Timer -->
-            <div class="text-center bg-red-600 px-8 py-2 border-b-4 border-white shadow-[0_10px_20px_rgba(220,38,38,0.5)] transform scale-110">
-                <div class="text-white text-sm font-bold tracking-widest">CRISIS EVENT: 双11直播爆单超卖危机</div>
-                <div class="text-5xl font-bold text-white font-[Teko] tracking-wider">01:15</div>
-            </div>
-
-            <!-- Player Stats -->
-            <div class="w-1/3 flex justify-end">
-                 <div class="bg-black/80 border-2 border-blue-500 p-3 skew-box w-full max-w-sm shadow-[4px_4px_0_var(--neon-blue)]">
-                    <div class="unskew-text w-full">
-                        <div class="flex justify-between items-end mb-1">
-                            <span class="text-blue-400 font-bold text-xl">店铺运营压力值 (Stress)</span>
-                            <span class="text-gray-400 text-sm">CRITICAL</span>
-                        </div>
-                        <div class="stat-bar">
-                            <div class="stat-fill-blue" id="player-stress" style="width: 85%;"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Dialogue Area -->
-        <div class="flex-1 relative z-10 flex flex-col justify-end pb-8 px-12 mt-12">
-            <!-- Glitchy Portrait -->
-            <div class="absolute bottom-[30%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-[url('https://cdn-icons-png.flaticon.com/512/4140/4140047.png')] bg-contain bg-no-repeat bg-center opacity-70 filter drop-shadow-[0_0_30px_rgba(220,38,38,0.8)] mix-blend-screen"></div>
-
-            <div class="bg-black/90 border-4 border-white p-8 cut-corner shadow-[15px_15px_0_var(--p5-red)] relative max-w-5xl mx-auto w-full backdrop-blur-md">
-                <div class="absolute -top-6 left-10 bg-white text-black font-bold text-2xl px-6 py-1 skew-box border-2 border-black">
-                    <span class="unskew-text">王总 (咆哮中)</span>
-                </div>
-                <p class="text-4xl text-white leading-relaxed mt-4 font-bold" id="npc-text">
-                    “你们大理财贸出来的运营团队就这水平？！直播间挂的爆款链接库存根本没锁住！现在超卖了 5000 单，我们后台被买家骂爆了，平台还要扣保证金！今晚如果不解决，马上发微博挂你们品牌！”
-                </p>
-                <div class="absolute bottom-4 right-6 text-red-500 animate-bounce">
-                    <i class="ph-fill ph-caret-down text-4xl"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Action Menu (Holland Theory Embedded) -->
-        <div class="h-auto bg-black border-t-4 border-red-600 z-20 p-8 flex flex-col gap-4">
-            <div class="text-white font-bold text-2xl flex items-center gap-2 mb-2">
-                <i class="ph-fill ph-target text-red-500"></i> 作为电商团队骨干，你的第一反应是？ (请点选)
-            </div>
-            <div class="grid grid-cols-2 gap-6">
-                <!-- Data (Conventional/Investigative) -->
-                <button class="skew-box btn-hacker py-5 text-xl text-left pl-6 group" onclick="playScenarioEffect('C')">
-                    <span class="unskew-text flex items-center gap-3">
-                        <span class="bg-neon-blue text-black px-2 py-1 text-sm font-bold rounded">C型/数据</span>
-                        "立刻拉取ERP超卖明细表，计算退款赔付成本与延迟发货的损失差额。"
-                    </span>
-                </button>
-                <!-- CS/Social (Social) -->
-                <button class="skew-box btn-hacker py-5 text-xl text-left pl-6 group" onclick="playScenarioEffect('S')">
-                    <span class="unskew-text flex items-center gap-3">
-                        <span class="bg-green-500 text-black px-2 py-1 text-sm font-bold rounded">S型/客服</span>
-                        "马上拟定安抚话术，安排客服1v1致电超卖客户，诚恳道歉并提供补偿。"
-                    </span>
-                </button>
-                <!-- Ops/Enterprising (Enterprising) -->
-                <button class="skew-box btn-hacker py-5 text-xl text-left pl-6 group" onclick="playScenarioEffect('E')">
-                    <span class="unskew-text flex items-center gap-3">
-                        <span class="bg-yellow-400 text-black px-2 py-1 text-sm font-bold rounded">E型/运营</span>
-                        "王总息怒，我立刻去工厂盯产连夜调拨补货，同时沟通平台小二申请豁免。"
-                    </span>
-                </button>
-                <!-- Visual/Artistic (Artistic) -->
-                <button class="skew-box btn-hacker py-5 text-xl text-left pl-6 group" onclick="playScenarioEffect('A')">
-                    <span class="unskew-text flex items-center gap-3">
-                        <span class="bg-pink-500 text-black px-2 py-1 text-sm font-bold rounded">A型/视觉</span>
-                        "火速设计一张极具诚意、排版精美的致歉信/补偿券海报，挂在店铺首页公关。"
-                    </span>
-                </button>
-            </div>
-            <div class="mt-4 flex justify-end">
-                <button class="btn-p5 px-8 py-3 text-xl font-bold" onclick="switchScreen('screen-report')">
-                    跳过剧情 >> 强制结算看结果
-                </button>
-            </div>
-        </div>
+    <!-- ==================== SCREEN 2: MAIN DASHBOARD (THE TRIAL) ==================== -->
+    <div id="screen-dashboard" class="screen flex-col gap-4 h-full">
         
-        <!-- Screen Shake / Red Flash Overlay -->
-        <div id="damage-overlay" class="absolute inset-0 bg-red-600 opacity-0 pointer-events-none transition-opacity duration-100 z-50"></div>
+        <!-- Top Bar: Global Metrics -->
+        <div class="h-24 flex gap-4 w-full">
+            <!-- Brand / Info -->
+            <div class="cyber-panel w-1/5 flex items-center p-4 gap-4">
+                <div class="w-12 h-12 bg-emerald-500/20 border-2 border-emerald-500 rounded-full flex items-center justify-center animate-pulse">
+                    <i class="ph-fill ph-radar text-2xl text-emerald-400"></i>
+                </div>
+                <div>
+                    <div class="text-xs text-emerald-500/70">DATA CENTER ID: DL-990</div>
+                    <div class="font-bold text-xl tracking-widest text-white">大理财贸·生鲜专营店</div>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="flex-1 flex gap-4">
+                <div class="cyber-panel flex-1 p-4 flex flex-col justify-center">
+                    <div class="text-xs text-gray-400">实时 GMV (今日)</div>
+                    <div class="text-3xl font-bold text-white flex items-baseline gap-2" id="kpi-gmv">
+                        ¥ <span class="tracking-tighter">1,284,500</span> <span class="text-emerald-500 text-sm">↑ 12%</span>
+                    </div>
+                </div>
+                <div class="cyber-panel flex-1 p-4 flex flex-col justify-center border-cyan-500/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.05)]">
+                    <div class="text-xs text-cyan-500">直通车 ROI (投入产出比)</div>
+                    <div class="text-3xl font-bold text-cyan-400 flex items-baseline gap-2" id="kpi-roi">
+                        2.85 <span class="text-emerald-500 text-sm">正常</span>
+                    </div>
+                </div>
+                <div class="cyber-panel flex-1 p-4 flex flex-col justify-center transition-colors duration-500" id="panel-cvr">
+                    <div class="text-xs text-gray-400">核心单品 CVR (转化率)</div>
+                    <div class="text-3xl font-bold text-white flex items-baseline gap-2" id="kpi-cvr">
+                        4.2% <span class="text-emerald-500 text-sm">稳定</span>
+                    </div>
+                </div>
+                <div class="cyber-panel flex-1 p-4 flex flex-col justify-center">
+                    <div class="text-xs text-yellow-500">剩余推广预算</div>
+                    <div class="text-3xl font-bold text-yellow-400 flex items-baseline gap-2">
+                        ¥ 12,000
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Workspace -->
+        <div class="flex-1 flex gap-4 h-[calc(100%-7rem)]">
+            
+            <!-- Left Column: Comms & Event Log -->
+            <div class="w-1/4 flex flex-col gap-4">
+                <div class="cyber-panel h-1/2 p-4 flex flex-col">
+                    <h3 class="text-emerald-500 font-bold border-b border-emerald-500/30 pb-2 mb-2 flex justify-between">
+                        <span><i class="ph-bold ph-chats"></i> COMMAND_LINK</span>
+                        <span class="text-xs bg-emerald-500/20 px-2 rounded">ONLINE</span>
+                    </h3>
+                    <div class="flex-1 overflow-y-auto pr-2 flex flex-col gap-3 font-sans" id="chat-log">
+                        <div class="text-sm text-gray-400">>> 接入大理财贸实训网络...成功。</div>
+                        <div class="bg-gray-800/80 border-l-2 border-gray-500 p-2 text-sm rounded-r">
+                            <span class="text-gray-300 font-bold text-xs block mb-1">店长:</span>
+                            大家准备好，今天冲击 200W 销售额。数据组盯紧流量大盘。
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="cyber-panel h-1/2 p-4 flex flex-col">
+                    <h3 class="text-cyan-500 font-bold border-b border-cyan-500/30 pb-2 mb-2 flex items-center gap-2">
+                        <i class="ph-bold ph-funnel"></i> 流量结构透视
+                    </h3>
+                    <div class="flex-1 relative">
+                         <canvas id="trafficChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Column: Core Charts (The Crisis Area) -->
+            <div class="w-2/4 cyber-panel p-4 flex flex-col relative overflow-hidden" id="center-panel">
+                <div class="absolute top-0 right-0 p-2 z-10">
+                    <div class="text-xs bg-black border border-emerald-500 px-2 text-emerald-500 font-bold flex items-center gap-2">
+                        <div class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></div> LIVE_SYNC
+                    </div>
+                </div>
+                <h3 class="text-white font-bold text-xl mb-4 font-sans border-b border-white/10 pb-2">核心爆款：[云南高山紫皮大蒜5斤装] 实时走势</h3>
+                
+                <div class="flex-1 w-full h-full relative p-4">
+                    <canvas id="mainTrendChart"></canvas>
+                </div>
+
+                <!-- Crisis Overlay (Hidden initially) -->
+                <div id="crisis-overlay" class="absolute inset-0 bg-red-900/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center p-8 text-center opacity-0 pointer-events-none transition-opacity duration-500">
+                    <i class="ph-fill ph-warning-octagon text-8xl text-red-500 mb-4 animate-bounce"></i>
+                    <h2 class="text-5xl font-black text-white mb-2 glitch-alert">TRAFFIC DROP DETECTED</h2>
+                    <p class="text-2xl text-red-200 font-sans font-bold bg-black/50 p-4 border border-red-500">
+                        警告：核心爆款转化率突然腰斩！系统检测到直通车 ROI 跌破 0.8！<br>
+                        店长要求立刻采取挽救措施！
+                    </p>
+                </div>
+            </div>
+
+            <!-- Right Column: Operations Terminal (Player Actions) -->
+            <div class="w-1/4 cyber-panel p-4 flex flex-col">
+                 <h3 class="text-yellow-500 font-bold border-b border-yellow-500/30 pb-2 mb-4 flex items-center gap-2">
+                    <i class="ph-bold ph-terminal"></i> OPS.EXECUTE
+                </h3>
+                
+                <div class="text-sm text-gray-400 mb-4 font-sans">
+                    请在下方终端输入指令代码，或点击对应的策略协议进行干预。你的决策将影响 Holland 算法判定。
+                </div>
+
+                <div class="flex-1 flex flex-col gap-4" id="action-buttons">
+                    <!-- Buttons are disabled until crisis hits -->
+                    <button class="btn-cmd flex flex-col p-4 text-left rounded shadow-lg opacity-50 cursor-not-allowed" disabled>
+                        <span class="font-bold text-white font-sans text-lg mb-1">协议一：暴力抢量对冲</span>
+                        <span class="text-xs text-emerald-400">cmd: bid.increase --target="全网" --max_budget</span>
+                        <div class="mt-2 text-xs text-gray-500 font-sans bg-black/50 p-1 rounded">倾向分析：强E型 (企业/进攻性)，无视ROI亏损强拉排名。</div>
+                    </button>
+                    
+                    <button class="btn-cmd flex flex-col p-4 text-left rounded shadow-lg opacity-50 cursor-not-allowed" disabled>
+                        <span class="font-bold text-white font-sans text-lg mb-1">协议二：流量归因拆解</span>
+                        <span class="text-xs text-cyan-400">cmd: analyze.traffic --dim="流失竞品" --depth="深"</span>
+                        <div class="mt-2 text-xs text-gray-500 font-sans bg-black/50 p-1 rounded">倾向分析：强C型 (常规/数据理智)，暂停盲目烧钱，先找数据病因。</div>
+                    </button>
+
+                    <button class="btn-cmd flex flex-col p-4 text-left rounded shadow-lg opacity-50 cursor-not-allowed" disabled>
+                        <span class="font-bold text-white font-sans text-lg mb-1">协议三：主图紧急替换</span>
+                        <span class="text-xs text-purple-400">cmd: assets.swap --type="main_img" --ab_test</span>
+                        <div class="mt-2 text-xs text-gray-500 font-sans bg-black/50 p-1 rounded">倾向分析：I/A型 (研究/视觉)，怀疑是视觉疲劳导致点击率下降。</div>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- ==================== SCREEN 4: EVOLUTION REPORT (HOLLAND + E-COMMERCE) ==================== -->
-    <div id="screen-report" class="screen flex p-8 gap-8 halftone-bg">
+    <!-- ==================== SCREEN 3: EVOLUTION REPORT (DATA OPS FOCUS) ==================== -->
+    <div id="screen-report" class="screen flex p-8 gap-8 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]">
         
         <!-- Left: Holland Hexagon -->
         <div class="w-1/3 flex flex-col gap-6">
-            <div class="bg-white text-black p-4 skew-box border-4 border-black shadow-[8px_8px_0_var(--p5-red)]">
-                <div class="unskew-text w-full flex justify-between items-center">
-                    <h2 class="text-4xl font-black">六维潜能解析</h2>
-                    <span class="bg-red-600 text-white px-2 py-1 font-bold text-sm">大理财贸 AI 核心</span>
+            <div class="bg-white text-black p-4 border-4 border-black shadow-[8px_8px_0_var(--term-green)] skew-x-[-5deg]">
+                <div class="skew-x-[5deg] w-full flex justify-between items-center">
+                    <h2 class="text-3xl font-black font-sans">大理财贸 · 数据评估报告</h2>
                 </div>
             </div>
 
             <!-- Radar Chart Container -->
-            <div class="bg-black/80 border-4 border-gray-700 p-4 flex-1 relative flex flex-col items-center justify-center">
-                <div class="absolute top-2 left-2 text-gray-500 font-[monospace] text-xs">Holland_RIASEC_Model_v3.0</div>
+            <div class="bg-black/90 border-2 border-gray-700 p-4 flex-1 relative flex flex-col items-center justify-center shadow-[inset_0_0_30px_rgba(0,0,0,1)]">
+                <div class="absolute top-2 left-2 text-gray-500 font-[monospace] text-xs">DLCM_ALGORITHM_V4</div>
                 <div class="w-full h-80 relative mt-4">
                     <canvas id="hollandChart"></canvas>
                 </div>
-                <!-- Legend mapping to roles -->
-                <div class="grid grid-cols-2 gap-2 mt-6 w-full px-4 text-sm">
-                    <div class="flex items-center gap-2"><div class="w-3 h-3 bg-[#fde047]"></div>E (企业): 统筹运营</div>
-                    <div class="flex items-center gap-2"><div class="w-3 h-3 bg-[#00f3ff]"></div>C (常规): 数据/执行</div>
-                    <div class="flex items-center gap-2"><div class="w-3 h-3 bg-[#22c55e]"></div>S (社会): 客服/门店</div>
-                    <div class="flex items-center gap-2"><div class="w-3 h-3 bg-[#f43f5e]"></div>A (艺术): 视觉设计</div>
-                    <div class="flex items-center gap-2"><div class="w-3 h-3 bg-[#a855f7]"></div>I (研究): 竞品/产品</div>
-                    <div class="flex items-center gap-2"><div class="w-3 h-3 bg-[#f97316]"></div>R (实用): 物流/操作</div>
+                <div class="w-full px-4 text-xs mt-4 grid grid-cols-2 gap-2 text-gray-400">
+                    <div><span class="text-yellow-500 font-bold">E (企业):</span> 操盘/预算决策</div>
+                    <div><span class="text-cyan-500 font-bold">C (常规):</span> 数据诊断/归因</div>
+                    <div><span class="text-purple-500 font-bold">I (研究):</span> 竞品/市场分析</div>
                 </div>
             </div>
         </div>
 
-        <!-- Right: Career Match & Skill Tree -->
+        <!-- Right: Career Match & Terminal Output -->
         <div class="w-2/3 flex flex-col gap-6">
             
-            <!-- Result Banner -->
-            <div class="bg-black border-4 border-neon-blue p-8 relative overflow-hidden shadow-[0_0_30px_rgba(0,243,255,0.2)]">
-                <div class="absolute -right-10 -top-10 text-[120px] opacity-10 font-black text-neon-blue"><i class="ph-fill ph-chart-line-up"></i></div>
-                <h3 class="text-2xl text-gray-400 font-bold mb-2">最高契合岗位测定 (MATCHED ROLE):</h3>
-                <div class="text-6xl font-black text-white mb-4" style="text-shadow: 4px 4px 0 var(--neon-blue);">
-                    高级电商运营官 / 数据操盘手
-                </div>
-                <div class="text-xl text-gray-300 border-l-4 border-neon-blue pl-4">
-                    <span class="text-neon-blue font-bold">系统评语：</span>在爆单危机中，你展现了极强的“E (企业/破局)”与“C (常规/算账)”特质。你不拘泥于安抚情绪，而是直击供应链要害与成本核算，天生具备大理财贸电商专业最稀缺的“统筹全局”思维。
-                </div>
+            <!-- Terminal Output Style Result -->
+            <div class="bg-black border-l-4 border-emerald-500 p-6 font-mono relative overflow-hidden h-64 shadow-2xl">
+                <div class="text-emerald-500 opacity-50 text-sm mb-4">root@dlcm-eval:~# ./generate_report.sh</div>
+                <div class="typing-cursor text-2xl leading-relaxed text-white font-bold" id="report-typing-area"></div>
             </div>
 
-            <!-- E-Commerce Skill Tree -->
-            <div class="flex-1 bg-black/90 border-4 border-gray-600 p-8 relative flex flex-col">
-                <h3 class="text-3xl font-bold text-white mb-6 flex items-center gap-3">
-                    <i class="ph-fill ph-git-branch text-red-500"></i> 你的专属进化任务 (实训闭环)
+            <!-- E-Commerce Skill Tree (Actionable) -->
+            <div class="flex-1 bg-gray-900 border-2 border-gray-700 p-8 relative flex flex-col">
+                <div class="absolute top-0 right-0 bg-emerald-500 text-black px-4 py-1 font-bold text-sm uppercase">Next Step Pipeline</div>
+                <h3 class="text-2xl font-bold text-white mb-6 flex items-center gap-3 font-sans">
+                    <i class="ph-bold ph-git-branch text-emerald-500"></i> 数据操盘手：专属进阶实训任务
                 </h3>
 
-                <!-- Tree Nodes styling -->
-                <div class="flex-1 flex flex-col justify-around relative pl-12 border-l-4 border-red-600 ml-4">
-                    
-                    <!-- Node 1 (Unlocked base) -->
-                    <div class="relative group">
-                        <div class="absolute -left-[3.5rem] w-12 h-12 rounded-full bg-red-600 border-4 border-black flex items-center justify-center text-white z-10 font-bold text-xl shadow-[0_0_15px_rgba(220,38,38,0.8)]">1</div>
-                        <div class="bg-gray-800 p-4 border-2 border-red-600 rounded">
-                            <h4 class="text-xl font-bold text-red-400">已点亮：基础平台规则</h4>
-                            <p class="text-gray-400 mt-1">你已具备处理基础客诉与店铺后台操作的能力。</p>
+                <div class="flex-1 flex flex-col justify-center relative pl-8 border-l-2 border-emerald-500 ml-4">
+                    <!-- Task Node -->
+                    <div class="relative group cursor-pointer">
+                        <div class="absolute -left-[2.3rem] w-8 h-8 rounded-full bg-black border-2 border-cyan-400 flex items-center justify-center text-cyan-400 z-10 shadow-[0_0_15px_rgba(6,182,212,0.8)] animate-pulse">
+                            <i class="ph-bold ph-lock-key"></i>
                         </div>
-                    </div>
-
-                    <!-- Node 2 (Locked / Target Task) -->
-                    <div class="relative group cursor-pointer mt-8">
-                        <div class="absolute -left-[3.5rem] w-12 h-12 rounded-full bg-black border-4 border-neon-blue flex items-center justify-center text-neon-blue z-10 font-bold shadow-[0_0_20px_rgba(0,243,255,0.6)] animate-pulse">
-                            <i class="ph-bold ph-lock-key text-2xl"></i>
-                        </div>
-                        <div class="bg-black p-5 border-2 border-neon-blue rounded hover:bg-gray-900 transition-colors">
-                            <h4 class="text-2xl font-bold text-neon-blue mb-2">暗槽：进阶 ROI 核算与爆款模型</h4>
-                            <div class="bg-blue-900/30 p-3 border border-blue-500/50 rounded">
-                                <span class="font-bold text-yellow-400 flex items-center gap-2">
-                                    <i class="ph-fill ph-bell-ringing"></i> 现实实训任务：
-                                </span>
-                                <p class="text-gray-300 mt-1">登录大理财贸教务平台，完成《高级电商数据分析》第三章测验，并利用生意参谋模拟器导出一份【竞品流量结构拆解报告】。</p>
+                        <div class="bg-black p-6 border border-cyan-500/50 hover:bg-gray-800 transition-colors rounded shadow-lg">
+                            <h4 class="text-2xl font-bold text-cyan-400 mb-2 font-sans" id="task-title">暗槽：直通车 ROI 诊断与优化</h4>
+                            <p class="text-gray-300 font-sans leading-relaxed" id="task-desc">
+                                任务要求：登录大理财贸教务沙盘，接手一家 ROI 低于 1.0 的模拟店铺。在有限预算内，通过删减垃圾词、调整人群溢价，在 3 个虚拟交易日内将 ROI 拉升至 2.5 以上。
+                            </p>
+                            <div class="mt-4 inline-block bg-cyan-900/30 text-cyan-400 border border-cyan-500 px-3 py-1 text-sm font-bold">
+                                核心锻炼能力：C型数据敏感度 / E型预算控制
                             </div>
-                            <div class="text-right mt-3 text-neon-blue text-sm font-bold">>> 长按扫码领取任务到手机</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Footer / Takeaway -->
-                <div class="mt-8 pt-6 border-t border-gray-700 flex justify-between items-center">
-                    <div class="flex items-center gap-4">
-                        <div class="w-24 h-24 bg-white p-1">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Dali-E-commerce" alt="QR" class="w-full h-full">
-                        </div>
-                        <div>
-                            <div class="text-white font-bold text-2xl mb-1">扫描二维码 · 保存进化图谱</div>
-                            <div class="text-gray-400">大理财贸职业院校 · 产教融合实训平台提供支持</div>
-                        </div>
-                    </div>
-                    <button class="btn-p5 px-10 py-4 text-3xl font-bold font-['ZCOOL_KuaiLe']" onclick="switchScreen('screen-home')">
-                        结束实训
+                <!-- Restart -->
+                <div class="mt-6 flex justify-end">
+                    <button class="btn-cmd px-8 py-3 font-bold flex items-center gap-2 text-xl" onclick="location.reload()">
+                        <i class="ph-bold ph-arrows-clockwise"></i> REBOOT_SYSTEM
                     </button>
                 </div>
             </div>
@@ -429,73 +309,255 @@
     </div>
 
     <script>
+        // --- Global State & Charts ---
+        let trendChartInstance = null;
+        let trafficChartInstance = null;
+        let mainChartData = Array.from({length: 20}, () => Math.floor(Math.random() * 5 + 40)); // Base conversion around 4-5%
+        let labels = Array.from({length: 20}, (_, i) => `14:${i<10?'0':''}${i}`);
+        let currentChoice = null;
+
         function switchScreen(screenId) {
             document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
-
-            if (screenId === 'screen-report' && !window.chartInit) {
-                initHollandChart();
-                window.chartInit = true;
-            }
         }
 
-        // Simulate Scenario Choices updating the dialogue (Simplistic for prototype)
-        function playScenarioEffect(hollandType) {
-            const npcText = document.getElementById('npc-text');
-            const overlay = document.getElementById('damage-overlay');
-            const trustBar = document.getElementById('npc-trust');
+        // --- Boot Sequence Simulation ---
+        const bootText = [
+            "Initializing DLCM Core Engine...",
+            "Loading Holland RIASEC Matrix...",
+            "Connecting to E-Commerce Data Stream...",
+            "Authenticating DL-990 Terminal...",
+            "[SUCCESS] Operations Sandbox Ready."
+        ];
+
+        async function runBoot() {
+            const container = document.getElementById('boot-text');
+            for(let i=0; i<bootText.length; i++) {
+                container.innerHTML += `<div><span class="text-gray-500">[${new Date().toISOString().split('T')[1].slice(0,-1)}]</span> <span class="${i===bootText.length-1 ? 'text-emerald-500 font-bold' : ''}">${bootText[i]}</span></div>`;
+                await new Promise(r => setTimeout(r, 400 + Math.random()*400));
+            }
+            document.getElementById('boot-btn').classList.remove('opacity-0');
+        }
+
+        window.onload = runBoot;
+
+        // --- Init Dashboard ---
+        function initDashboard() {
+            switchScreen('screen-dashboard');
+            initCharts();
             
-            // Visual feedback
-            overlay.style.opacity = '0.5';
-            setTimeout(() => overlay.style.opacity = '0', 100);
+            // Start peaceful simulation
+            let simInterval = setInterval(() => {
+                // Add new normal data point
+                mainChartData.shift();
+                mainChartData.push(Math.floor(Math.random() * 5 + 40));
+                labels.shift();
+                let lastLabel = labels[labels.length-1];
+                let mins = parseInt(lastLabel.split(':')[1]) + 1;
+                labels.push(`14:${mins<10?'0':''}${mins}`);
+                trendChartInstance.update();
+            }, 1500);
 
-            // Change dialogue based on selection
-            if (hollandType === 'C') {
-                npcText.innerHTML = "“算损失？！现在是算这个的时候吗？！不过...你能马上拿出数据止损方案，总比干瞪眼强。马上把报表给我！” <br><span class='text-neon-blue text-xl mt-4 block'>[系统分析：你展现了极强的 C(常规型) 数据敏感度，更适合电商数据运营岗位。]</span>";
-                trustBar.style.width = '60%';
-            } else if (hollandType === 'A') {
-                npcText.innerHTML = "“一张海报能顶什么用？！不过...如果设计得确实能平息买家怒火，赶紧让你们视觉团队去弄，要快！” <br><span class='text-pink-500 text-xl mt-4 block'>[系统分析：你倾向于用视觉和创意解决问题，A(艺术型) 潜能提升，适合视觉设计岗。]</span>";
-                trustBar.style.width = '45%';
-            } else {
-                npcText.innerHTML = "“说得轻巧！赶紧去落地执行，我只看最后的结果！大理财贸的牌子别砸在你们手里！” <br><span class='text-yellow-400 text-xl mt-4 block'>[系统分析：你的选项已被记录进入 Holland 算法模型...]</span>";
-                trustBar.style.width = '50%';
-            }
+            // Trigger Crisis after 6 seconds
+            setTimeout(() => {
+                clearInterval(simInterval);
+                triggerCrisis();
+            }, 6000);
         }
 
-        // Initialize Holland Hexagon Radar Chart
-        function initHollandChart() {
-            const ctx = document.getElementById('hollandChart').getContext('2d');
-            Chart.defaults.color = '#9ca3af';
-            Chart.defaults.font.family = "'Teko', monospace";
+        function initCharts() {
+            Chart.defaults.color = '#64748b';
+            Chart.defaults.font.family = "'JetBrains Mono', monospace";
 
-            new Chart(ctx, {
+            // 1. Traffic Donut Chart
+            const ctxTraffic = document.getElementById('trafficChart').getContext('2d');
+            trafficChartInstance = new Chart(ctxTraffic, {
+                type: 'doughnut',
+                data: {
+                    labels: ['自然搜索', '直通车', '引力魔方', '站外'],
+                    datasets: [{
+                        data: [45, 30, 15, 10],
+                        backgroundColor: ['#10b981', '#06b6d4', '#eab308', '#64748b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { color: '#cbd5e1' } } }
+                }
+            });
+
+            // 2. Main Trend Line Chart (CVR)
+            const ctxTrend = document.getElementById('mainChart').getContext('2d');
+            trendChartInstance = new Chart(ctxTrend, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '实时转化率 (CVR %)',
+                        data: mainChartData,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        y: { min: 0, max: 80, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } },
+                    animation: { duration: 400 }
+                }
+            });
+        }
+
+        // --- The Crisis Logic ---
+        function triggerCrisis() {
+            // Visual Alarms
+            document.getElementById('crisis-overlay').classList.remove('opacity-0');
+            document.getElementById('crisis-overlay').classList.remove('pointer-events-none');
+            document.getElementById('center-panel').style.borderColor = 'red';
+            
+            // KPI changes
+            document.getElementById('panel-cvr').classList.add('bg-red-900/50', 'border-red-500');
+            document.getElementById('kpi-cvr').innerHTML = `<span class="glitch-alert">0.8%</span> <span class="text-red-500 text-sm">↓ 暴跌</span>`;
+            document.getElementById('kpi-roi').innerHTML = `<span class="text-red-500">0.45</span> <span class="text-red-500 text-sm">亏损</span>`;
+
+            // Chart Drops dramatically
+            let dropData = [];
+            for(let i=0; i<20; i++) {
+                if(i<10) dropData.push(mainChartData[10+i] || 45); // Keep some old data
+                else dropData.push(Math.max(5, 45 - (i-10)*8)); // Plunge
+            }
+            trendChartInstance.data.datasets[0].data = dropData;
+            trendChartInstance.data.datasets[0].borderColor = '#ef4444';
+            trendChartInstance.data.datasets[0].backgroundColor = 'rgba(239, 68, 68, 0.2)';
+            trendChartInstance.update();
+
+            // Chat Update
+            const chatLog = document.getElementById('chat-log');
+            chatLog.innerHTML += `
+                <div class="bg-red-900/80 border-l-4 border-red-500 p-2 text-sm rounded mt-2 animate-bounce">
+                    <span class="text-red-200 font-bold text-xs block mb-1">店长 (紧急):</span>
+                    “怎么回事？！转化率突然崩了！是图被抄了还是同行降价打价格战了？赶紧处理，这一个小时我们要亏上万块！”
+                </div>
+            `;
+            chatLog.scrollTop = chatLog.scrollHeight;
+
+            // Enable Action Buttons with click handlers
+            const buttons = document.querySelectorAll('#action-buttons button');
+            buttons.forEach(btn => {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.onclick = function() {
+                    if(this.innerText.includes('暴力抢量')) handleAction('E');
+                    else if(this.innerText.includes('流量归因')) handleAction('C');
+                    else handleAction('I');
+                };
+            });
+        }
+
+        // --- Action Handlers ---
+        function handleAction(type) {
+            currentChoice = type;
+            const chatLog = document.getElementById('chat-log');
+            
+            // Disable buttons to prevent double click
+            document.querySelectorAll('#action-buttons button').forEach(b => b.disabled = true);
+            document.getElementById('crisis-overlay').classList.add('opacity-0'); // Hide big warning
+
+            let responseText = "";
+            if(type === 'E') {
+                responseText = "> 指令确认：强行提价获取展现。预算消耗急剧加快。转化率略有回升，但 ROI 进一步恶化，亏损扩大。";
+            } else if(type === 'C') {
+                responseText = "> 指令确认：拉取流量透视。发现【直通车】渠道被竞品恶意点击，自然搜索流量稳定。已实施人群屏蔽策略止损。";
+            } else if(type === 'I') {
+                responseText = "> 指令确认：进行主图 AB 测试。需要至少 2 小时收集数据，期间转化率继续低迷。缓不济急。";
+            }
+
+            chatLog.innerHTML += `<div class="text-cyan-400 mt-2 p-2 border border-cyan-500 bg-black text-sm font-mono">${responseText}</div>`;
+            chatLog.scrollTop = chatLog.scrollHeight;
+
+            // Wait 2 seconds then go to report
+            setTimeout(() => {
+                generateReport(type);
+            }, 3000);
+        }
+
+        // --- Report Generation ---
+        function generateReport(type) {
+            switchScreen('screen-report');
+            
+            let chartData = [];
+            let typingText = "";
+            let tTitle = "";
+            let tDesc = "";
+
+            if(type === 'E') {
+                chartData = [20, 20, 10, 30, 95, 40]; // High E
+                typingText = `分析完成。<br><br>你的决策风格具有极强的【侵略性与目标导向 (E)】。<br>面对危机，你倾向于利用资本(预算)碾压对手。<br><br><span class='text-yellow-500'>评估结果：适合大体量成熟店铺的【战略操盘手】，但在中小微企业的精细化运营中容易导致资金链断裂。</span>`;
+                tTitle = "进阶：ROI 极限拉扯与预算分配";
+                tDesc = "现实实训：利用教务模拟器，在仅有 1000 元预算限制下，策划一次清仓活动，要求保证不亏损的情况下出清 500 件库存。";
+            } else if(type === 'C') {
+                chartData = [30, 60, 20, 30, 50, 95]; // High C
+                typingText = `分析完成。<br><br>你的决策风格体现了教科书般的【数据理智与逻辑归因 (C)】。<br>在极度高压下，你没有盲目操作，而是通过数据下钻找到了真正的出血点(恶意点击)。<br><br><span class='text-cyan-500'>评估结果：极其契合大理财贸重点培养的【高级电商数据分析师】岗位，是团队不可或缺的“刹车”与“军师”。</span>`;
+                tTitle = "进阶：流量结构拆解与防刷单风控";
+                tDesc = "现实实训：使用生意参谋数据包，找出一个异常高点击低转化的关键词，撰写一份包含“屏蔽人群标签组合”的优化报告。";
+            } else if(type === 'I') {
+                chartData = [20, 90, 70, 20, 30, 40]; // High I
+                typingText = `分析完成。<br><br>你的决策风格偏向【深度研究与内容诊断 (I/A)】。<br>你的第一反应是产品本身（视觉/卖点）出了问题，这在长线品牌建设中很正确，但缺乏应对突发大促的临时应变能力。<br><br><span class='text-purple-500'>评估结果：适合【电商产品经理 / 视觉策划】，但在纯粹的流量运营岗可能水土不服。</span>`;
+                tTitle = "跨界实训：数据辅助视觉决策";
+                tDesc = "现实实训：不要只凭直觉。去后台提取昨日点击率 Top 3 和 Bottom 3 的主图，利用热力图工具分析消费者的视觉停留点差异，出具修改方案。";
+            }
+
+            renderReportChart(chartData);
+            
+            // Typewriter effect
+            const typeArea = document.getElementById('report-typing-area');
+            typeArea.innerHTML = "";
+            let i = 0;
+            const pureText = typingText.replace(/<[^>]*>?/gm, ''); // for simple typing length, actual implementation needs complex parsing if inserting HTML char by char.
+            // Simplified injection for prototype:
+            typeArea.innerHTML = typingText;
+            typeArea.style.opacity = 0;
+            setTimeout(() => { typeArea.style.opacity = 1; typeArea.style.transition = 'opacity 1s'; }, 100);
+
+            document.getElementById('task-title').innerText = tTitle;
+            document.getElementById('task-desc').innerText = tDesc;
+        }
+
+        let reportChartInstance = null;
+        function renderReportChart(dataArr) {
+            const ctx = document.getElementById('hollandChart').getContext('2d');
+            if(reportChartInstance) reportChartInstance.destroy();
+            
+            reportChartInstance = new Chart(ctx, {
                 type: 'radar',
                 data: {
-                    labels: ['R (实用/操作)', 'I (研究/产品)', 'A (艺术/视觉)', 'S (社会/客服)', 'E (企业/运营)', 'C (常规/数据)'],
+                    labels: ['R (执行)', 'I (研究)', 'A (视觉)', 'S (客服)', 'E (操盘)', 'C (数据)'],
                     datasets: [{
                         label: '潜能指数',
-                        data: [50, 75, 60, 55, 95, 85], // Hardcoded to show E/C dominance for "电商运营"
-                        backgroundColor: 'rgba(0, 243, 255, 0.2)',
-                        borderColor: '#00f3ff',
-                        pointBackgroundColor: '#fff',
-                        pointBorderColor: '#00f3ff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: '#00f3ff',
-                        borderWidth: 3,
+                        data: dataArr,
+                        backgroundColor: 'rgba(16, 185, 129, 0.3)',
+                        borderColor: '#10b981',
+                        pointBackgroundColor: '#000',
+                        pointBorderColor: '#10b981',
+                        borderWidth: 2,
                         pointRadius: 4
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     scales: {
                         r: {
-                            angleLines: { color: 'rgba(255, 255, 255, 0.2)' },
-                            grid: { color: 'rgba(255, 255, 255, 0.2)' },
-                            pointLabels: {
-                                font: { size: 16, weight: 'bold' },
-                                color: '#f5f5f5'
-                            },
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { font: { size: 14, family: 'sans-serif' }, color: '#cbd5e1' },
                             ticks: { display: false, min: 0, max: 100 }
                         }
                     },
@@ -503,6 +565,9 @@
                 }
             });
         }
+        
+        // Setup initial canvas id correctly for the main chart
+        document.getElementById('mainTrendChart').id = 'mainChart';
     </script>
 </body>
 </html>
