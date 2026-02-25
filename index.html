@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>职境纪元 x 大理财贸 - 世界级实战舱</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;600;700&family=ZCOOL+KuaiLe&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            /* Global */
+            --bg-void: #030305;
+            
+            /* Track 1: Data/Ops (Cyber Hacker) */
+            --t1-main: #00ff41;
+            --t1-bg: #001100;
+            
+            /* Track 2: Visual/Product (Neon Art) */
+            --t2-main: #ff00ff;
+            --t2-bg: #1a001a;
+            
+            /* Track 3: CS/Store (Social Warning) */
+            --t3-main: #ffaa00;
+            --t3-bg: #1a1100;
+
+            /* P5 Core */
+            --p5-red: #e60012;
+            --p5-black: #1a1a1a;
+        }
+
+        body {
+            font-family: 'Teko', 'ZCOOL KuaiLe', sans-serif;
+            background-color: var(--bg-void);
+            color: #fff;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .screen {
+            position: absolute;
+            inset: 0;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+            background-color: var(--bg-void);
+        }
+        .screen.active { display: flex; opacity: 1; z-index: 10; }
+
+        /* Shared Utilities */
+        .skew-box { transform: skew(-8deg); }
+        .unskew-text { transform: skew(8deg); display: inline-block; }
+        .cut-corner { clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px); }
+
+        /* ================= TRACK 1: DATA / OPS (MATRIX STYLE) ================= */
+        .theme-data { font-family: 'JetBrains Mono', monospace; }
+        .bg-matrix {
+            background: radial-gradient(circle at center, var(--t1-bg) 0%, #000 100%);
+            background-image: linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+        .btn-data {
+            background: rgba(0,20,0,0.8); border: 1px solid var(--t1-main); color: var(--t1-main);
+            box-shadow: inset 0 0 10px rgba(0,255,65,0.2), 0 0 10px rgba(0,255,65,0.2);
+            transition: all 0.2s; text-transform: uppercase;
+        }
+        .btn-data:hover { background: var(--t1-main); color: #000; box-shadow: 0 0 20px var(--t1-main); }
+        
+        .chart-falling { animation: drop 2s infinite linear; color: red; }
+        @keyframes drop { 0% { transform: translateY(-10px); opacity: 0;} 50% {opacity:1;} 100% { transform: translateY(20px); opacity: 0;} }
+
+        /* ================= TRACK 2: VISUAL / PRODUCT (NEON / VAPORWAVE) ================= */
+        .theme-visual { font-family: 'Teko', sans-serif; }
+        .bg-neon {
+            background: linear-gradient(135deg, var(--t2-bg) 0%, #090014 100%);
+        }
+        .glass-panel {
+            background: rgba(255, 0, 255, 0.05); backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 0, 255, 0.3); border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(255, 0, 255, 0.1);
+        }
+        .btn-visual {
+            background: transparent; border: 2px solid var(--t2-main); color: var(--t2-main);
+            border-radius: 50px; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-transform: uppercase; letter-spacing: 2px;
+        }
+        .btn-visual:hover {
+            background: var(--t2-main); color: #000; transform: scale(1.05);
+            box-shadow: 0 0 20px var(--t2-main), inset 0 0 10px rgba(255,255,255,0.5);
+        }
+        .art-glitch { animation: rgbShift 0.2s infinite alternate; }
+        @keyframes rgbShift { 0% { text-shadow: -2px 0 red, 2px 0 cyan; } 100% { text-shadow: 2px 0 red, -2px 0 cyan; } }
+
+        /* ================= TRACK 3: CS / STORE (WARNING / SOCIAL) ================= */
+        .theme-cs { font-family: 'ZCOOL KuaiLe', sans-serif; }
+        .bg-warning {
+            background: repeating-linear-gradient(45deg, var(--t3-bg), var(--t3-bg) 10px, #000 10px, #000 20px);
+            animation: warnScroll 20s linear infinite;
+        }
+        @keyframes warnScroll { 0% { background-position: 0 0; } 100% { background-position: 100px 100px; } }
+        .social-card {
+            background: #fff; color: #000; border-radius: 12px;
+            box-shadow: 8px 8px 0 var(--t3-main); border: 2px solid #000;
+        }
+        .btn-cs {
+            background: var(--t3-main); border: 2px solid #000; color: #000;
+            box-shadow: 4px 4px 0 #000; font-weight: bold; transition: all 0.1s;
+        }
+        .btn-cs:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #000; }
+
+        /* CRT Scanlines across everything */
+        .scanlines {
+            position: absolute; inset: 0; pointer-events: none; z-index: 999;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+
+    <!-- ==================== HOME SCREEN ==================== -->
+    <div id="screen-home" class="screen active flex-col items-center justify-center cursor-pointer" onclick="switchScreen('screen-hub')">
+        <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1920')] bg-cover opacity-20 filter grayscale"></div>
+        <div class="z-10 text-center">
+            <div class="inline-block bg-red-600 text-white px-6 py-2 skew-box mb-6 border-2 border-white">
+                <span class="unskew-text font-bold text-2xl tracking-widest">大理财贸职院 · 电商专属实训版 v4.0</span>
+            </div>
+            <h1 class="text-[160px] font-black leading-none mb-2 text-white" style="text-shadow: 12px 12px 0 var(--p5-red);">职境<span class="text-red-500">纪元</span></h1>
+            <p class="text-4xl text-gray-400 font-['Teko'] tracking-[0.5em] mb-16 uppercase">The World's First E-commerce RPG Simulator</p>
+            
+            <button class="skew-box bg-white text-black border-4 border-black px-16 py-6 text-5xl font-black shadow-[10px_10px_0_var(--p5-red)] hover:bg-red-600 hover:text-white transition-colors group">
+                <span class="unskew-text flex items-center gap-4">
+                    <i class="ph-bold ph-power text-5xl group-hover:animate-spin"></i> 系统启动 (SYSTEM START)
+                </span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== HUB SCREEN (3 DISTINCT PATHS) ==================== -->
+    <div id="screen-hub" class="screen flex-col bg-[#050505]">
+        <div class="p-8 pb-0 z-10 flex justify-between items-end">
+            <div>
+                <h2 class="text-6xl font-black text-white uppercase tracking-wider" style="text-shadow: 4px 4px 0 #333;">Select Your Battlefield</h2>
+                <div class="text-red-500 font-bold text-xl mt-2 flex items-center gap-2"><i class="ph-fill ph-warning"></i> 警告：进入不同街区将触发完全不同的物理引擎与交互界面</div>
+            </div>
+            <div class="bg-black border-2 border-white p-2 text-right">
+                <div class="text-gray-500 text-xs">Holland Code Target:</div>
+                <div class="text-white font-bold text-xl">RIASEC ALGORITHM ACTIVE</div>
+            </div>
+        </div>
+
+        <div class="flex-1 flex gap-6 p-8">
+            <!-- TRACK 1: OPS & DATA -->
+            <div class="flex-1 border-4 border-gray-800 hover:border-[#00ff41] bg-black relative group cursor-pointer transition-all duration-300 cut-corner overflow-hidden flex flex-col justify-end p-8" onclick="switchScreen('screen-scenario-data')">
+                <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800')] bg-cover opacity-20 group-hover:opacity-40 filter grayscale group-hover:grayscale-0 transition-all"></div>
+                <div class="absolute top-4 left-4 text-[#00ff41] font-bold text-2xl animate-pulse opacity-0 group-hover:opacity-100">[ SYS.OPS_DATA_LINK ]</div>
+                <div class="relative z-10 translate-y-8 group-hover:translate-y-0 transition-transform">
+                    <i class="ph-fill ph-terminal-window text-6xl text-[#00ff41] mb-4"></i>
+                    <h3 class="text-5xl font-black text-white mb-2 uppercase">数据中枢塔</h3>
+                    <p class="text-gray-400 text-xl font-['JetBrains_Mono'] border-l-4 border-[#00ff41] pl-3">电商运营 / 数据分析<br><span class="text-[#00ff41] text-sm">Holland: Enterprising (E) / Conventional (C)</span></p>
+                </div>
+            </div>
+
+            <!-- TRACK 2: VISUAL & PRODUCT -->
+            <div class="flex-1 border-4 border-gray-800 hover:border-[#ff00ff] bg-black relative group cursor-pointer transition-all duration-300 cut-corner overflow-hidden flex flex-col justify-end p-8" onclick="switchScreen('screen-scenario-visual')">
+                <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&w=800')] bg-cover opacity-20 group-hover:opacity-60 filter hue-rotate-90 transition-all"></div>
+                <div class="absolute top-4 left-4 text-[#ff00ff] font-bold text-2xl animate-pulse opacity-0 group-hover:opacity-100">[ ART.AESTHETIC_CORE ]</div>
+                <div class="relative z-10 translate-y-8 group-hover:translate-y-0 transition-transform">
+                    <i class="ph-fill ph-aperture text-6xl text-[#ff00ff] mb-4"></i>
+                    <h3 class="text-5xl font-black text-white mb-2 uppercase">霓虹创意阵列</h3>
+                    <p class="text-gray-400 text-xl border-l-4 border-[#ff00ff] pl-3">视觉设计 / 产品开发<br><span class="text-[#ff00ff] text-sm font-['JetBrains_Mono']">Holland: Artistic (A) / Investigative (I)</span></p>
+                </div>
+            </div>
+
+            <!-- TRACK 3: CS & STOREFRONT -->
+            <div class="flex-1 border-4 border-gray-800 hover:border-[#ffaa00] bg-black relative group cursor-pointer transition-all duration-300 cut-corner overflow-hidden flex flex-col justify-end p-8" onclick="switchScreen('screen-scenario-cs')">
+                <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800')] bg-cover opacity-20 group-hover:opacity-50 transition-all"></div>
+                <div class="absolute top-4 left-4 text-[#ffaa00] font-bold text-2xl animate-pulse opacity-0 group-hover:opacity-100">[ SOC.FRONTLINE_CHAT ]</div>
+                <div class="relative z-10 translate-y-8 group-hover:translate-y-0 transition-transform">
+                    <i class="ph-fill ph-headset text-6xl text-[#ffaa00] mb-4"></i>
+                    <h3 class="text-5xl font-black text-white mb-2 uppercase">前线公关战壕</h3>
+                    <p class="text-gray-400 text-xl border-l-4 border-[#ffaa00] pl-3 font-['ZCOOL_KuaiLe']">客户服务 / 门店经营<br><span class="text-[#ffaa00] text-sm font-['JetBrains_Mono']">Holland: Social (S) / Realistic (R)</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SCENARIO 1: DATA & OPS (The Hacker/Matrix UI) ==================== -->
+    <div id="screen-scenario-data" class="screen flex-col theme-data bg-matrix">
+        <!-- Floating numbers -->
+        <div class="absolute top-20 left-10 text-[#00ff41] text-xl opacity-50 font-bold">ROI: <span class="chart-falling block text-red-500 text-4xl">0.4 ▼</span></div>
+        <div class="absolute top-40 right-20 text-[#00ff41] text-xl opacity-50 font-bold">TRAFFIC: <span class="chart-falling block text-red-500 text-4xl">-45% ▼</span></div>
+
+        <!-- Terminal Header -->
+        <div class="w-full bg-black border-b border-[#00ff41] p-4 flex justify-between items-center text-[#00ff41] shadow-[0_0_20px_rgba(0,255,65,0.2)] z-10">
+            <div><i class="ph-bold ph-terminal"></i> root@dali-finance-ops:~# ./run_double11_monitoring.sh</div>
+            <div class="animate-pulse bg-red-600 text-white px-2 font-bold">CRITICAL_ALERT: TRAFFIC_DROP</div>
+        </div>
+
+        <div class="flex-1 flex p-8 gap-8 z-10">
+            <!-- Data Dashboard (Boss) -->
+            <div class="w-1/2 flex flex-col gap-4">
+                <div class="bg-black/80 border border-[#00ff41] p-6 h-64 flex flex-col justify-center">
+                    <div class="text-red-500 font-bold text-2xl mb-2 flex items-center gap-2"><i class="ph-fill ph-warning"></i> 运营总监来电 (Voice Comm)</div>
+                    <p class="text-[#00ff41] text-2xl leading-relaxed">
+                        > “直通车烧了五万块，怎么今天访客断崖式下跌？！转化率跌到冰点了！竞品是不是在搞降价截流？你作为操盘手，三分钟内给我排查出数据异动的原因，并给出调整方案！否则今天全部通宵！”
+                    </p>
+                </div>
+                <!-- Simulated Chart -->
+                <div class="bg-black/80 border border-gray-700 p-4 flex-1 relative flex items-end">
+                    <div class="absolute top-2 left-2 text-gray-500 text-xs">Real-time CVR Graph</div>
+                    <!-- Fake chart line dropping -->
+                    <svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                        <polyline points="0,20 20,25 40,30 60,80 80,95 100,98" fill="none" stroke="red" stroke-width="2" />
+                        <polyline points="0,20 20,25 40,30 60,35 80,30 100,25" fill="none" stroke="rgba(0,255,65,0.3)" stroke-width="1" stroke-dasharray="2,2" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Terminal Input / Choices -->
+            <div class="w-1/2 flex flex-col justify-end">
+                <div class="text-[#00ff41] mb-4 text-xl">> Select diagnostic command (E/C trait focus):</div>
+                <div class="flex flex-col gap-4">
+                    <button class="btn-data p-6 text-left text-xl flex items-center gap-4" onclick="proceedToReport('E')">
+                        <span class="text-gray-500">[1]</span> 
+                        <span>execute --target=competitor --action="紧急调价对冲，拉满直通车出价抢排名"</span>
+                        <span class="ml-auto text-xs bg-[#00ff41] text-black px-1">E型/企业统筹</span>
+                    </button>
+                    <button class="btn-data p-6 text-left text-xl flex items-center gap-4" onclick="proceedToReport('C')">
+                        <span class="text-gray-500">[2]</span> 
+                        <span>query --db=生意参谋 --filter="拆解流量渠道，对比竞品引流词流失率，生成透视表"</span>
+                        <span class="ml-auto text-xs bg-cyan-400 text-black px-1">C型/数据归因</span>
+                    </button>
+                    <button class="btn-data p-6 text-left text-xl flex items-center gap-4 border-gray-600 text-gray-400" onclick="proceedToReport('I')">
+                        <span class="text-gray-500">[3]</span> 
+                        <span>analyze --target=product --action="研究竞品的主图和详情页是否进行了卖点更新"</span>
+                        <span class="ml-auto text-xs bg-purple-400 text-black px-1">I型/研究分析</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SCENARIO 2: VISUAL & PRODUCT (Neon Art Editor UI) ==================== -->
+    <div id="screen-scenario-visual" class="screen flex-col theme-visual bg-neon">
+        <!-- Floating Aesthetic Elements -->
+        <div class="absolute top-[10%] right-[10%] w-64 h-64 bg-gradient-to-tr from-[#ff00ff] to-cyan-500 rounded-full mix-blend-screen blur-3xl opacity-50"></div>
+        
+        <div class="w-full flex justify-between items-center p-6 border-b border-[#ff00ff]/30 z-10 backdrop-blur-md bg-black/20">
+            <div class="text-3xl text-white font-bold flex items-center gap-3"><i class="ph-fill ph-framer-logo text-[#ff00ff]"></i> Dali.Visual.Studio_v0.9</div>
+            <div class="bg-red-600 text-white px-4 py-1 text-2xl rounded-full art-glitch">FEEDBACK: CTR TOO LOW!</div>
+        </div>
+
+        <div class="flex-1 flex p-8 gap-8 z-10">
+            <!-- The "Canvas" / Boss feedback -->
+            <div class="w-2/3 glass-panel p-2 relative flex flex-col">
+                <div class="absolute top-4 left-4 text-white/50 flex gap-2"><div class="w-3 h-3 rounded-full bg-red-500"></div><div class="w-3 h-3 rounded-full bg-yellow-500"></div><div class="w-3 h-3 rounded-full bg-green-500"></div></div>
+                <div class="flex-1 mt-8 bg-black/50 rounded-lg border border-white/10 flex items-center justify-center relative overflow-hidden">
+                    <!-- A bad mock image -->
+                    <div class="text-center">
+                        <i class="ph-thin ph-image text-9xl text-gray-600"></i>
+                        <h2 class="text-4xl text-gray-500 mt-4">MAIN_IMAGE_V1_FINAL.psd</h2>
+                    </div>
+                    <!-- Art Director Comment floating -->
+                    <div class="absolute bottom-10 right-10 bg-[#ff00ff] text-black p-4 rounded-xl shadow-2xl max-w-sm rotate-3 transform transition-transform hover:scale-105 hover:rotate-0">
+                        <div class="font-bold text-2xl mb-1 border-b border-black/20 pb-1">来自 创意总监 的批注：</div>
+                        <p class="text-xl leading-tight">“这张图简直是一场灾难！毫无视觉冲击力，卖点字多得像写作文。点击率连 1% 都没有！离上架只有 1 小时，给我一套炸裂的重构方案！”</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Editor Tools / Choices -->
+            <div class="w-1/3 flex flex-col gap-6 justify-center">
+                <h3 class="text-[#ff00ff] text-3xl tracking-widest uppercase">Select Design Direction:</h3>
+                
+                <button class="btn-visual p-5 text-2xl text-left hover:bg-gradient-to-r hover:from-[#ff00ff] hover:to-cyan-500 group relative overflow-hidden" onclick="proceedToReport('A')">
+                    <div class="relative z-10">
+                        <span class="block font-bold text-white group-hover:text-black mb-1">【重塑视觉奇观】(A型)</span>
+                        <span class="text-lg opacity-80 text-[#ff00ff] group-hover:text-black normal-case">推翻排版，使用高饱和度 3D 渲染和赛博朋克光影，放大产品材质细节，主打第一眼冲击力。</span>
+                    </div>
+                </button>
+
+                <button class="btn-visual p-5 text-2xl text-left border-cyan-400 text-cyan-400 hover:bg-cyan-400 group" onclick="proceedToReport('I')">
+                    <div class="relative z-10">
+                        <span class="block font-bold text-white group-hover:text-black mb-1">【深挖产品痛点】(I型)</span>
+                        <span class="text-lg opacity-80 text-cyan-400 group-hover:text-black normal-case">研究消费者评论区，提取 3 个最核心痛点，用对比图（Before/After）做主视觉，讲究逻辑说服。</span>
+                    </div>
+                </button>
+                
+                 <button class="btn-visual p-5 text-2xl text-left border-yellow-400 text-yellow-400 hover:bg-yellow-400 group" onclick="proceedToReport('E')">
+                    <div class="relative z-10">
+                        <span class="block font-bold text-white group-hover:text-black mb-1">【放大营销噱头】(E型)</span>
+                        <span class="text-lg opacity-80 text-yellow-400 group-hover:text-black normal-case">排版不重要，把“买一送一”、“限时秒杀”字样放到最大占满屏幕一半，简单粗暴抢点击。</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SCENARIO 3: CS & STOREFRONT (Smartphone / Social Media UI) ==================== -->
+    <div id="screen-scenario-cs" class="screen flex-col theme-cs bg-warning">
+        
+        <div class="w-full flex justify-center p-4 z-10">
+            <div class="bg-black text-white px-8 py-2 text-3xl font-bold rounded-full border-4 border-[#ffaa00] shadow-[0_0_20px_rgba(255,170,0,0.8)] flex items-center gap-3">
+                <i class="ph-fill ph-siren text-[#ffaa00] animate-spin"></i> 实体门店 / 舆情突发事件！
+            </div>
+        </div>
+
+        <div class="flex-1 flex justify-center items-center gap-12 z-10 p-8">
+            <!-- Simulated Mobile Phone (Reviews/Social) -->
+            <div class="w-[380px] h-[700px] bg-white rounded-[40px] border-8 border-black shadow-[20px_20px_0_rgba(0,0,0,0.5)] p-4 relative overflow-hidden flex flex-col">
+                <!-- Phone Header -->
+                <div class="w-32 h-6 bg-black rounded-b-xl absolute top-0 left-1/2 -translate-x-1/2"></div>
+                <div class="flex justify-between text-black text-sm font-sans mt-4 px-2 font-bold">
+                    <span>14:30</span>
+                    <span class="flex gap-1"><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span>
+                </div>
+                
+                <h3 class="text-black text-2xl mt-4 font-bold border-b-2 border-black pb-2">小红书 / 大众点评 报警</h3>
+                
+                <!-- Social Media Post -->
+                <div class="mt-4 flex-1 overflow-y-auto pr-2 flex flex-col gap-4">
+                    <div class="bg-red-50 p-3 rounded-lg border border-red-200">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-10 h-10 bg-gray-300 rounded-full"></div>
+                            <div class="text-black font-bold font-sans">愤怒的消费者_张三</div>
+                        </div>
+                        <p class="text-black text-lg leading-tight mb-2">避雷大理财贸的这家 O2O 体验店！店员态度极其恶劣，线上买的券线下说不能用，要求退款还不给！大家都别来！！🤬🤬🤬</p>
+                        <div class="text-red-500 font-sans text-sm font-bold">🔥 转发 500+ | 评论 1.2w+ (热搜攀升中)</div>
+                    </div>
+                    
+                    <!-- Store manager text -->
+                    <div class="bg-yellow-100 p-3 rounded-lg border border-yellow-400 self-end w-10/12">
+                        <div class="text-black font-bold font-sans mb-1 text-sm">店长 语音转文字：</div>
+                        <p class="text-black text-md leading-tight">“总部救命！这个客人在店里大吵大闹砸东西，现在很多人围观拍照，网上的帖子也爆了，我们完全控制不住了，快给我指示！”</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Response Actions -->
+            <div class="w-[450px] flex flex-col gap-6">
+                <div class="bg-black p-4 border-l-8 border-[#ffaa00] text-white">
+                    <h2 class="text-4xl font-bold mb-2 text-[#ffaa00]">公关危机！你的决策？</h2>
+                    <p class="text-xl text-gray-300">作为客服与门店管理统筹，舆情正在急剧恶化，必须立刻采取行动。</p>
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    <button class="btn-cs p-4 text-xl text-left text-2xl" onclick="proceedToReport('S')">
+                        <span class="block bg-black text-white px-2 py-1 text-sm w-fit mb-1 font-sans">S型 / 共情安抚</span>
+                        立刻致电客户，诚恳道歉并全额退款，赠送高级慰问品。要求店长到现场倒水安抚情绪，先平息网下怒火。
+                    </button>
+                    <button class="btn-cs p-4 text-xl text-left text-2xl" style="background:#fff;" onclick="proceedToReport('R')">
+                        <span class="block bg-black text-white px-2 py-1 text-sm w-fit mb-1 font-sans">R型 / 现场实干</span>
+                        不废话，立刻驱车赶往线下门店，亲自接管现场秩序，物理隔离该客户与围观人群，报警并在现场出具退款证明。
+                    </button>
+                    <button class="btn-cs p-4 text-xl text-left text-2xl" style="background:#ccc;" onclick="proceedToReport('C')">
+                        <span class="block bg-black text-white px-2 py-1 text-sm w-fit mb-1 font-sans">C型 / 规则风控</span>
+                        查阅该订单的用券规则和监控录像。如果客户属于恶意薅羊毛，立刻组织法务拟定官方声明在全网发布以正视听。
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SCREEN: EVOLUTION REPORT (DYNAMIC) ==================== -->
+    <div id="screen-report" class="screen flex flex-col p-8 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]">
+        
+        <div class="flex justify-between items-center bg-white text-black p-4 skew-box border-4 border-black shadow-[8px_8px_0_var(--p5-red)] z-20 mb-8">
+            <h2 class="unskew-text text-5xl font-black">职境纪元 · 实战能力鉴定书</h2>
+            <span class="unskew-text bg-red-600 text-white px-4 py-2 font-bold text-xl">DALI FINANCE & TRADE - E-COMMERCE</span>
+        </div>
+
+        <div class="flex-1 flex gap-8 z-10">
+            <!-- Left: Holland Hexagon -->
+            <div class="w-1/3 bg-black border-4 border-white p-6 relative flex flex-col items-center justify-center shadow-[10px_10px_0_rgba(255,255,255,0.2)]">
+                <h3 class="absolute top-4 left-4 text-white text-2xl font-bold border-b-2 border-red-500 pb-1">Holland RIASEC</h3>
+                <div class="w-full h-80 relative mt-8">
+                    <canvas id="hollandChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Right: Dynamic Career Match & Task -->
+            <div class="w-2/3 flex flex-col gap-6">
+                <!-- Result Banner -->
+                <div class="bg-black border-l-8 border-[#00ff41] p-8 relative overflow-hidden" id="report-banner">
+                    <h3 class="text-2xl text-gray-400 font-bold mb-2">最高契合岗位测定 (MATCHED ROLE):</h3>
+                    <div class="text-7xl font-black text-white mb-4 tracking-widest" id="report-role" style="text-shadow: 4px 4px 0 #00ff41;">
+                        高级电商数据操盘手
+                    </div>
+                    <p class="text-2xl text-gray-300" id="report-desc">
+                        你展现了极其敏锐的数据归因能力与大局观，不盲目行动，而是通过数据分析直击问题核心。大理财贸的电商运营舞台，非你莫属！
+                    </p>
+                </div>
+
+                <!-- Actionable Task -->
+                <div class="flex-1 bg-gray-900 border-2 border-dashed border-gray-500 p-8 flex flex-col justify-center relative group hover:border-red-500 transition-colors">
+                    <div class="absolute top-0 right-0 bg-red-600 text-white px-4 py-1 font-bold text-xl">锁定任务 (LOCKED)</div>
+                    <div class="flex items-center gap-6">
+                        <i class="ph-fill ph-target text-7xl text-red-500"></i>
+                        <div>
+                            <h4 class="text-4xl font-bold text-white mb-2" id="report-task-title">现实实训：流量拆解与数据罗盘</h4>
+                            <p class="text-2xl text-gray-400" id="report-task-desc">登录教务系统，导出上个月店铺模拟沙盘的数据，完成一份【直通车ROI优化方案】。完成后可解锁真实电商企业的内推资格。</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8 flex justify-between items-end border-t border-gray-700 pt-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-24 h-24 bg-white p-2">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Dali" alt="QR" class="w-full h-full">
+                            </div>
+                            <div class="text-xl font-bold text-gray-400">长按扫码，带走你的鉴定报告与任务</div>
+                        </div>
+                        <button class="bg-white text-black border-4 border-black px-8 py-3 text-3xl font-black shadow-[6px_6px_0_var(--p5-red)] hover:bg-red-600 hover:text-white transition-colors" onclick="switchScreen('screen-home')">
+                            重置系统 (RESTART)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let myChart = null;
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // Logic to dynamically generate report based on choices
+        function proceedToReport(choiceType) {
+            switchScreen('screen-report');
+            
+            // DOM Elements
+            const banner = document.getElementById('report-banner');
+            const role = document.getElementById('report-role');
+            const desc = document.getElementById('report-desc');
+            const taskTitle = document.getElementById('report-task-title');
+            const taskDesc = document.getElementById('report-task-desc');
+
+            // Default data for chart (R, I, A, S, E, C)
+            let chartData = [40, 40, 40, 40, 40, 40];
+            let themeColor = '#00ff41';
+
+            if (choiceType === 'E' || choiceType === 'C') {
+                chartData = [30, 50, 20, 40, 95, 85]; // High E & C
+                themeColor = '#00ff41';
+                banner.style.borderColor = themeColor;
+                role.style.textShadow = `4px 4px 0 ${themeColor}`;
+                role.innerText = choiceType === 'E' ? "全域电商运营总监" : "高级电商数据操盘手";
+                desc.innerText = "你展现了强大的商业统筹(E)与逻辑归因(C)能力。在危机面前，你看重的是 ROI 与整体店铺权重。";
+                taskTitle.innerText = "实训：大促营销/数据复盘";
+                taskDesc.innerText = "利用生意参谋模拟器，导出一份【双11流量结构与竞品截流分析报告】。";
+
+            } else if (choiceType === 'A' || choiceType === 'I') {
+                chartData = [20, 85, 95, 30, 40, 30]; // High A & I
+                themeColor = '#ff00ff';
+                banner.style.borderColor = themeColor;
+                role.style.textShadow = `4px 4px 0 ${themeColor}`;
+                role.innerText = choiceType === 'A' ? "视觉体验设计专家" : "爆款产品挖掘专家";
+                desc.innerText = "你对美感(A)和产品痛点研究(I)拥有极高天赋。比起枯燥的数据，你更相信视觉冲击力和切中痛点的图片能带来极致转化。";
+                taskTitle.innerText = "实训：高点击率主图设计";
+                taskDesc.innerText = "使用 Figma/PS，针对目标受众，重新设计一套具有极高视觉冲击力的电商主图与详情页动效。";
+
+            } else if (choiceType === 'S' || choiceType === 'R') {
+                chartData = [80, 20, 20, 95, 50, 40]; // High S & R
+                themeColor = '#ffaa00';
+                banner.style.borderColor = themeColor;
+                role.style.textShadow = `4px 4px 0 ${themeColor}`;
+                role.innerText = choiceType === 'S' ? "金牌危机公关/客服主管" : "O2O 门店操盘手";
+                desc.innerText = "你拥有极强的共情安抚能力(S)与现场执行力(R)。面对汹涌的客诉，你总能第一时间阻断危机，挽回品牌声誉。";
+                taskTitle.innerText = "实训：舆情干预与门店客诉处理";
+                taskDesc.innerText = "基于今天的小红书客诉事件，编写一套标准的话术 SOP，并录制一段门店现场处理纠纷的实景演练视频。";
+            }
+
+            renderChart(chartData, themeColor);
+        }
+
+        function renderChart(dataArr, color) {
+            const ctx = document.getElementById('hollandChart').getContext('2d');
+            Chart.defaults.color = '#fff';
+            Chart.defaults.font.family = "'Teko', sans-serif";
+            
+            if(myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['R (操作/现场)', 'I (研究/产品)', 'A (视觉/艺术)', 'S (客服/公关)', 'E (运营/统筹)', 'C (数据/常规)'],
+                    datasets: [{
+                        label: '潜能指数',
+                        data: dataArr,
+                        backgroundColor: `${color}40`, // 25% opacity hex
+                        borderColor: color,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: color,
+                        borderWidth: 4,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.3)', lineWidth: 2 },
+                            grid: { color: 'rgba(255, 255, 255, 0.2)', circular: true },
+                            pointLabels: { font: { size: 20, weight: 'bold' }, color: '#fff' },
+                            ticks: { display: false, min: 0, max: 100 }
+                        }
+                    },
+                    plugins: { legend: { display: false } },
+                    animation: { duration: 1500, easing: 'easeOutQuart' }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
