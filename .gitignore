@@ -1,0 +1,12 @@
+node_modules/
+data/
+data-playwright/
+.env
+.env.*
+playwright-report/
+test-results/
+.DS_Store
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*

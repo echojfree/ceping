@@ -143,7 +143,7 @@
     </div>
 
     <!-- ==================== SCREEN 1: ATTRACT ==================== -->
-    <div id="screen-home" class="screen active flex-col items-center justify-center cursor-pointer halftone-bg" onclick="switchScreen('screen-hub')">
+    <div id="screen-home" class="screen active flex-col items-center justify-center cursor-pointer halftone-bg" onclick="switchScreen('screen-briefing')">
         <div class="absolute top-8 left-12 flex items-center gap-4 z-20 bg-black/50 p-3 cut-corner border border-red-500/50">
             <div class="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center font-bold text-xl border-2 border-white">大理</div>
             <div>
@@ -179,12 +179,160 @@
         <style> @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } } </style>
     </div>
 
+    <!-- ==================== SCREEN 1.5: ROLE BRIEFING (JOB AWARENESS) ==================== -->
+    <div id="screen-briefing" class="screen flex-col overflow-hidden relative halftone-bg">
+        <div class="absolute top-6 left-6 bg-black border-2 border-white p-3 skew-box z-20 shadow-[4px_4px_0_var(--neon-blue)]">
+            <div class="unskew-text">
+                <div class="text-neon-blue text-sm font-bold tracking-widest">MISSION_BRIEFING</div>
+                <div class="text-3xl font-black text-white">入场前：岗位情报简报</div>
+                <div class="text-xs text-gray-400 font-[monospace] mt-1">先搞懂岗位干什么，再去“剧本杀”才不会乱选</div>
+            </div>
+        </div>
+        <div class="absolute top-6 right-6 bg-black border-2 border-white p-3 skew-box z-20 shadow-[4px_4px_0_var(--p5-red)]">
+            <div class="unskew-text text-right">
+                <div class="text-red-500 text-sm font-bold">ACCESS</div>
+                <div class="text-lg font-bold text-white">完成识别训练获取入场许可</div>
+                <div class="text-xs text-gray-400 font-[monospace]">（可跳过，但不推荐）</div>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col px-10 pt-28 pb-8 z-10">
+            <!-- Stepper -->
+            <div class="flex items-center gap-4 mb-6">
+                <div class="bg-white text-black px-4 py-2 skew-box border-4 border-black shadow-[6px_6px_0_var(--p5-red)]">
+                    <span class="unskew-text font-black text-2xl">STEP</span>
+                    <span class="unskew-text font-black text-2xl text-red-600" id="cv-brief-step">1</span>
+                </div>
+                <div class="flex-1 bg-black/60 border border-white/10 p-3 cut-corner">
+                    <div class="text-sm text-gray-400 font-[monospace]">进度：<span id="cv-brief-progress">岗位速览</span></div>
+                    <div class="text-2xl font-black text-white" id="cv-brief-title">六大岗位：你将做什么？</div>
+                </div>
+                <div class="flex gap-3">
+                    <button class="btn-hacker px-6 py-3 text-xl font-bold skew-box" onclick="window.RoleBriefing?.skip?.()">
+                        <span class="unskew-text">跳过简报</span>
+                    </button>
+                    <button class="btn-p5 px-6 py-3 text-xl font-bold skew-box" onclick="window.RoleBriefing?.next?.()">
+                        <span class="unskew-text" id="cv-brief-next">开始识别训练</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 flex gap-6 overflow-hidden">
+                <!-- Left: role grid -->
+                <div class="w-[520px] shrink-0 bg-black/70 border-4 border-gray-700 cut-corner p-4 overflow-hidden">
+                    <div class="text-gray-300 font-bold mb-3 flex items-center justify-between">
+                        <span class="text-2xl">六岗情报板</span>
+                        <span class="text-xs font-[monospace] text-gray-400">点击查看</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3" id="cv-role-grid"></div>
+                    <div class="mt-4 bg-black/60 border border-white/10 p-3">
+                        <div class="text-xs text-gray-400 font-[monospace]">提示</div>
+                        <div class="text-gray-200 text-lg">看完后去做“识别训练”，你在实战里会更清楚自己在干什么。</div>
+                    </div>
+                </div>
+
+                <!-- Right: detail / quiz -->
+                <div class="flex-1 overflow-hidden">
+                    <!-- Detail -->
+                    <div id="cv-role-detail" class="h-full bg-black/70 border-4 border-red-600 cut-corner p-6 overflow-y-auto">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <div class="text-gray-400 text-sm font-[monospace]">ROLE</div>
+                                <div class="text-6xl font-black text-white leading-none" id="cv-role-name">加载中...</div>
+                                <div class="mt-2 text-xl text-gray-200 border-l-4 border-red-600 pl-3" id="cv-role-tagline"></div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-gray-400 text-sm font-[monospace]">RIASEC_MATCH</div>
+                                <div class="text-3xl font-black text-neon-blue" id="cv-role-riasec"></div>
+                                <div class="text-gray-400 text-xs font-[monospace]" id="cv-role-zone"></div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="bg-black/50 border border-white/10 p-4">
+                                <div class="text-neon-yellow font-bold text-xl mb-2">你将做什么（3-5件事）</div>
+                                <ul class="list-disc ml-6 text-lg text-gray-200" id="cv-role-do"></ul>
+                            </div>
+                            <div class="bg-black/50 border border-white/10 p-4">
+                                <div class="text-emerald-400 font-bold text-xl mb-2">你会用到什么（工具/方法）</div>
+                                <div class="flex flex-wrap gap-2" id="cv-role-tools"></div>
+                            </div>
+                            <div class="bg-black/50 border border-white/10 p-4">
+                                <div class="text-cyan-400 font-bold text-xl mb-2">你要看懂哪些指标</div>
+                                <div class="flex flex-wrap gap-2" id="cv-role-kpi"></div>
+                            </div>
+                            <div class="bg-black/50 border border-white/10 p-4">
+                                <div class="text-red-400 font-bold text-xl mb-2">常见误区（别踩雷）</div>
+                                <ul class="list-disc ml-6 text-lg text-gray-200" id="cv-role-mistakes"></ul>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 bg-black/60 border-2 border-neon-blue/40 p-4 cut-corner">
+                            <div class="text-neon-blue font-bold text-2xl mb-2">1分钟练习任务</div>
+                            <div class="text-gray-200 text-xl" id="cv-role-microtask"></div>
+                        </div>
+                    </div>
+
+                    <!-- Quiz -->
+                    <div id="cv-role-quiz" class="hidden h-full bg-black/70 border-4 border-neon-blue cut-corner p-6 overflow-y-auto">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <div class="text-gray-400 text-sm font-[monospace]">TRAINING</div>
+                                <div class="text-5xl font-black text-white">岗位识别训练</div>
+                                <div class="text-gray-200 text-lg mt-2">给你一个现场问题，你选“应该找哪个岗位的人来处理”。</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-gray-400 text-sm font-[monospace]">SCORE</div>
+                                <div class="text-4xl font-black text-emerald-400"><span id="cv-quiz-score">0</span>/<span id="cv-quiz-total">0</span></div>
+                                <div class="text-gray-400 text-xs font-[monospace]">答完即可入场</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 bg-black/50 border border-white/10 p-6">
+                            <div class="text-gray-400 text-sm font-[monospace]">SCENE_<span id="cv-quiz-index">1</span></div>
+                            <div class="text-4xl font-black text-white mt-2" id="cv-quiz-question"></div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6" id="cv-quiz-options"></div>
+                            <div class="mt-6 text-xl border-l-4 pl-4 hidden" id="cv-quiz-feedback"></div>
+                        </div>
+
+                        <div class="mt-6 flex justify-end gap-3">
+                            <button class="btn-hacker px-8 py-4 text-2xl font-bold skew-box" onclick="window.RoleBriefing?.prevQuiz?.()">
+                                <span class="unskew-text">上一题</span>
+                            </button>
+                            <button class="btn-p5 px-8 py-4 text-2xl font-bold skew-box" onclick="window.RoleBriefing?.nextQuiz?.()">
+                                <span class="unskew-text" id="cv-quiz-next">下一题</span>
+                            </button>
+                        </div>
+
+                        <div class="mt-6 bg-black/60 border-2 border-emerald-500/40 p-4 cut-corner hidden" id="cv-quiz-done">
+                            <div class="text-emerald-400 font-black text-3xl mb-2">ACCESS GRANTED ✅</div>
+                            <div class="text-gray-200 text-xl">你已经具备基本岗位认知，进入实战后，你的每次选择会更“像在做一个岗位的工作”。</div>
+                            <div class="mt-4 flex justify-end">
+                                <button class="btn-p5 px-10 py-4 text-3xl font-bold skew-box" onclick="window.RoleBriefing?.finish?.()">
+                                    <span class="unskew-text">进入实战大厅</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ==================== SCREEN 2: THE HUB (E-COMMERCE ROLES) ==================== -->
     <div id="screen-hub" class="screen flex-col overflow-hidden relative halftone-bg">
         <div class="absolute top-6 right-6 bg-black border-2 border-white p-3 skew-box z-20 shadow-[4px_4px_0_var(--p5-red)]">
             <div class="unskew-text text-right">
                 <div class="text-red-500 text-sm font-bold">PLAYER_ID: DLCM_9921</div>
                 <div class="text-2xl font-bold text-white">选择实训剧本</div>
+                <div id="cv-age-holder" class="mt-1"></div>
+                <div class="mt-2 flex items-center justify-end gap-3">
+                    <div id="cv-briefing-status" class="text-xs text-gray-400 font-[monospace]"></div>
+                    <button id="cv-briefing-btn" class="btn-hacker px-4 py-2 text-sm font-bold skew-box" onclick="switchScreen('screen-briefing')">
+                        <span class="unskew-text">岗位情报简报</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -196,7 +344,7 @@
         <div class="flex-1 flex items-center justify-center gap-10 z-10 px-12 perspective-[1000px] mt-4">
             
             <!-- Track 1: Ops & Data (Trigger New Data Flow) -->
-            <div class="relative group cursor-pointer transition-transform duration-300 hover:scale-105" onclick="triggerDataOpsFlow()">
+            <div id="cv-card-dataops" class="relative group cursor-pointer transition-transform duration-300 hover:scale-105" onclick="triggerDataOpsFlow()">
                 <div class="w-[340px] h-[480px] bg-black border-4 border-gray-700 cut-corner overflow-hidden relative shadow-2xl group-hover:border-neon-blue transition-colors">
                     <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-40 group-hover:opacity-70 group-hover:scale-110 transition-all duration-500"></div>
                     <div class="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
@@ -213,8 +361,8 @@
                 </div>
             </div>
 
-            <!-- Track 2: Product & Visual (Generic Flow) -->
-            <div class="relative group cursor-pointer transition-transform duration-300 hover:scale-110 transform scale-105" onclick="switchScreen('screen-scenario-generic')">
+            <!-- Track 2: Product & Visual (Creative Lab Deep) -->
+            <div id="cv-card-creative" class="relative group cursor-pointer transition-transform duration-300 hover:scale-110 transform scale-105" onclick="window.CareerVerse?.startCreativeLab?.()">
                 <div class="w-[380px] h-[520px] bg-black border-4 border-red-600 cut-corner overflow-hidden relative shadow-[0_0_40px_rgba(230,0,18,0.4)] group-hover:shadow-[0_0_60px_rgba(230,0,18,0.8)]">
                     <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-60 group-hover:opacity-90 group-hover:scale-110 transition-all duration-500"></div>
                     <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
@@ -230,8 +378,8 @@
                 </div>
             </div>
 
-            <!-- Track 3: CS & Storefront (Generic Flow) -->
-            <div class="relative group cursor-pointer transition-transform duration-300 hover:scale-105" onclick="switchScreen('screen-scenario-generic')">
+            <!-- Track 3: CS & Storefront (Frontline Deep) -->
+            <div id="cv-card-frontline" class="relative group cursor-pointer transition-transform duration-300 hover:scale-105" onclick="window.CareerVerse?.startFrontline?.()">
                 <div class="w-[340px] h-[480px] bg-black border-4 border-gray-700 cut-corner overflow-hidden relative shadow-2xl group-hover:border-green-500 transition-colors">
                     <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-40 group-hover:opacity-70 group-hover:scale-110 transition-all duration-500"></div>
                     <div class="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
@@ -249,11 +397,9 @@
     </div>
 
     <!-- ========================================================================================= -->
-    <!-- ==================== FLOW A: GENERIC SCENARIO (Visual & CS Tracks) ==================== -->
+    <!-- ==================== FLOW A: CREATIVE LAB (Deep Scenario) ==================== -->
     <!-- ========================================================================================= -->
-    
-    <!-- GENERIC TRIAL -->
-    <div id="screen-scenario-generic" class="screen flex-col bg-[#050505] relative">
+    <div id="screen-creative-lab" class="screen flex-col bg-[#050505] relative">
         <div class="absolute top-20 right-10 flex flex-col gap-2 z-0 opacity-40 pointer-events-none">
             <div class="bg-red-900 text-white px-4 py-1 text-2xl font-[monospace] border border-red-500">LIVE VIEWS: 1.2M</div>
             <div class="bg-red-900 text-white px-4 py-1 text-xl font-[monospace] border border-red-500 animate-pulse">WARNING: INVENTORY -5000</div>
@@ -264,25 +410,25 @@
                 <div class="bg-black/80 border-2 border-yellow-500 p-3 skew-box shadow-[4px_4px_0_var(--neon-yellow)]">
                     <div class="unskew-text w-full">
                         <div class="flex justify-between items-end mb-1">
-                            <span class="text-yellow-400 font-bold text-xl"><i class="ph-fill ph-warning-octagon"></i> 头部主播选品经理 - 王总</span>
-                            <span class="text-gray-400 text-sm">合作信任度</span>
+                            <span class="text-yellow-400 font-bold text-xl"><i class="ph-fill ph-warning-octagon"></i> 创意总监 - “红姐”</span>
+                            <span class="text-gray-400 text-sm font-[monospace]" id="cv-cre-progress">SCENE 1/6</span>
                         </div>
-                        <div class="stat-bar"><div class="stat-fill-red" id="npc-trust" style="width: 30%;"></div></div>
+                        <div class="stat-bar"><div class="stat-fill-red" id="cv-cre-pressure" style="width: 65%;"></div></div>
                     </div>
                 </div>
             </div>
             <div class="text-center bg-red-600 px-8 py-2 border-b-4 border-white shadow-[0_10px_20px_rgba(220,38,38,0.5)] transform scale-110">
-                <div class="text-white text-sm font-bold tracking-widest">CRISIS EVENT: 双11直播爆单超卖危机</div>
-                <div class="text-5xl font-bold text-white font-[Teko] tracking-wider">01:15</div>
+                <div class="text-white text-sm font-bold tracking-widest">CREATIVE_LAB: 主图与页面作战</div>
+                <div class="text-5xl font-bold text-white font-[Teko] tracking-wider" id="cv-cre-timer">02:30</div>
             </div>
             <div class="w-1/3 flex justify-end">
                  <div class="bg-black/80 border-2 border-blue-500 p-3 skew-box w-full max-w-sm shadow-[4px_4px_0_var(--neon-blue)]">
                     <div class="unskew-text w-full">
                         <div class="flex justify-between items-end mb-1">
-                            <span class="text-blue-400 font-bold text-xl">店铺公关压力值</span>
-                            <span class="text-gray-400 text-sm">CRITICAL</span>
+                            <span class="text-blue-400 font-bold text-xl">KPI</span>
+                            <span class="text-gray-400 text-sm font-[monospace]">CTR/CVR</span>
                         </div>
-                        <div class="stat-bar"><div class="stat-fill-blue" id="player-stress" style="width: 85%;"></div></div>
+                        <div class="stat-bar"><div class="stat-fill-blue" id="cv-cre-kpi" style="width: 45%;"></div></div>
                     </div>
                 </div>
             </div>
@@ -293,41 +439,97 @@
 
             <div class="bg-black/90 border-4 border-white p-8 cut-corner shadow-[15px_15px_0_var(--p5-red)] relative max-w-5xl mx-auto w-full backdrop-blur-md">
                 <div class="absolute -top-6 left-10 bg-white text-black font-bold text-2xl px-6 py-1 skew-box border-2 border-black">
-                    <span class="unskew-text">王总 (咆哮中)</span>
+                    <span class="unskew-text">任务简报</span>
                 </div>
-                <p class="text-4xl text-white leading-relaxed mt-4 font-bold" id="npc-text">
-                    “你们大理财贸出来的运营团队就这水平？！直播间挂的爆款链接库存根本没锁住！现在超卖了 5000 单，买家骂爆了！如果不解决，马上发微博挂你们！”
+                <p class="text-4xl text-white leading-relaxed mt-4 font-bold" id="cv-cre-prompt">
+                    加载中...
                 </p>
             </div>
         </div>
 
         <div class="h-auto bg-black border-t-4 border-red-600 z-20 p-8 flex flex-col gap-4">
-            <div class="grid grid-cols-2 gap-6">
-                <!-- S/Social -->
-                <button class="skew-box btn-hacker py-5 text-xl text-left pl-6 group" onclick="playScenarioEffect('S')">
-                    <span class="unskew-text flex items-center gap-3">
-                        <span class="bg-green-500 text-black px-2 py-1 text-sm font-bold rounded">S型/客服</span>
-                        "马上拟定安抚话术，安排客服1v1致电超卖客户致歉。"
-                    </span>
-                </button>
-                <!-- A/Artistic -->
-                <button class="skew-box btn-hacker py-5 text-xl text-left pl-6 group" onclick="playScenarioEffect('A')">
-                    <span class="unskew-text flex items-center gap-3">
-                        <span class="bg-pink-500 text-black px-2 py-1 text-sm font-bold rounded">A型/视觉</span>
-                        "火速设计一张极具诚意、排版精美的致歉公关海报挂在首页。"
-                    </span>
-                </button>
-            </div>
-            <div class="mt-4 flex justify-end">
-                <button class="btn-p5 px-8 py-3 text-xl font-bold" onclick="switchScreen('screen-report-generic')">
-                    跳过剧情 >> 强制结算看结果
-                </button>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="cv-cre-options"></div>
+            <div class="mt-4 flex items-center justify-between gap-4">
+                <div id="cv-cre-feedback" class="text-xl text-gray-300 border-l-4 border-neon-blue pl-4 hidden"></div>
+                <div class="flex gap-3">
+                    <button class="btn-hacker px-8 py-3 text-xl font-bold skew-box" onclick="window.CareerVerse?.scenarioBack?.('creative')">
+                        <span class="unskew-text">上一幕</span>
+                    </button>
+                    <button class="btn-p5 px-8 py-3 text-xl font-bold skew-box" onclick="window.CareerVerse?.scenarioNext?.('creative')">
+                        <span class="unskew-text" id="cv-cre-next">下一幕</span>
+                    </button>
+                </div>
             </div>
         </div>
         <div id="damage-overlay" class="absolute inset-0 bg-red-600 opacity-0 pointer-events-none transition-opacity duration-100 z-50"></div>
     </div>
 
-    <!-- GENERIC REPORT -->
+    <!-- ========================================================================================= -->
+    <!-- ==================== FLOW B: FRONTLINE (Deep Scenario) ==================== -->
+    <!-- ========================================================================================= -->
+    <div id="screen-frontline" class="screen flex-col bg-[#050505] relative">
+        <div class="absolute top-20 right-10 flex flex-col gap-2 z-0 opacity-40 pointer-events-none">
+            <div class="bg-green-900 text-white px-4 py-1 text-2xl font-[monospace] border border-green-500">CALLS: 98 /min</div>
+            <div class="bg-green-900 text-white px-4 py-1 text-xl font-[monospace] border border-green-500 animate-pulse">ALERT: BAD_REVIEWS +120</div>
+        </div>
+
+        <div class="relative z-10 w-full p-6 flex justify-between items-start">
+            <div class="w-1/3">
+                <div class="bg-black/80 border-2 border-green-500 p-3 skew-box shadow-[4px_4px_0_rgba(34,197,94,0.8)]">
+                    <div class="unskew-text w-full">
+                        <div class="flex justify-between items-end mb-1">
+                            <span class="text-green-400 font-bold text-xl"><i class="ph-fill ph-headset"></i> 前线督导 - “老唐”</span>
+                            <span class="text-gray-400 text-sm font-[monospace]" id="cv-fr-progress">SCENE 1/6</span>
+                        </div>
+                        <div class="stat-bar"><div class="stat-fill-blue" id="cv-fr-stress" style="width: 70%;"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center bg-green-600 px-8 py-2 border-b-4 border-white shadow-[0_10px_20px_rgba(34,197,94,0.4)] transform scale-110">
+                <div class="text-white text-sm font-bold tracking-widest">FRONTLINE: 客诉与门店联动</div>
+                <div class="text-5xl font-bold text-white font-[Teko] tracking-wider" id="cv-fr-timer">03:00</div>
+            </div>
+            <div class="w-1/3 flex justify-end">
+                 <div class="bg-black/80 border-2 border-yellow-500 p-3 skew-box w-full max-w-sm shadow-[4px_4px_0_var(--neon-yellow)]">
+                    <div class="unskew-text w-full">
+                        <div class="flex justify-between items-end mb-1">
+                            <span class="text-yellow-400 font-bold text-xl">目标</span>
+                            <span class="text-gray-400 text-sm font-[monospace]">DSR/差评</span>
+                        </div>
+                        <div class="stat-bar"><div class="stat-fill-red" id="cv-fr-kpi" style="width: 55%;"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 relative z-10 flex flex-col justify-end pb-8 px-12 mt-12">
+            <div class="bg-black/90 border-4 border-white p-8 cut-corner shadow-[15px_15px_0_rgba(34,197,94,0.7)] relative max-w-5xl mx-auto w-full backdrop-blur-md">
+                <div class="absolute -top-6 left-10 bg-white text-black font-bold text-2xl px-6 py-1 skew-box border-2 border-black">
+                    <span class="unskew-text">现场问题</span>
+                </div>
+                <p class="text-4xl text-white leading-relaxed mt-4 font-bold" id="cv-fr-prompt">
+                    加载中...
+                </p>
+            </div>
+        </div>
+
+        <div class="h-auto bg-black border-t-4 border-green-600 z-20 p-8 flex flex-col gap-4">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="cv-fr-options"></div>
+            <div class="mt-4 flex items-center justify-between gap-4">
+                <div id="cv-fr-feedback" class="text-xl text-gray-300 border-l-4 border-green-500 pl-4 hidden"></div>
+                <div class="flex gap-3">
+                    <button class="btn-hacker px-8 py-3 text-xl font-bold skew-box" onclick="window.CareerVerse?.scenarioBack?.('frontline')">
+                        <span class="unskew-text">上一幕</span>
+                    </button>
+                    <button class="btn-p5 px-8 py-3 text-xl font-bold skew-box" onclick="window.CareerVerse?.scenarioNext?.('frontline')">
+                        <span class="unskew-text" id="cv-fr-next">下一幕</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GENERIC REPORT (used by creative/frontline scenarios) -->
     <div id="screen-report-generic" class="screen flex p-8 gap-8 halftone-bg">
         <div class="w-1/3 flex flex-col gap-6">
             <div class="bg-white text-black p-4 skew-box border-4 border-black shadow-[8px_8px_0_var(--p5-red)]">
@@ -336,12 +538,18 @@
             <div class="bg-black/80 border-4 border-gray-700 p-4 flex-1 relative flex flex-col items-center justify-center">
                 <div class="w-full h-80 relative mt-4"><canvas id="hollandChartGeneric"></canvas></div>
             </div>
+            <div class="bg-black/80 border-4 border-gray-700 p-4">
+                <div class="text-gray-400 font-bold mb-2">技能倾向 (Skill Map)</div>
+                <div id="cv-skill-bars" class="flex flex-col gap-2"></div>
+            </div>
         </div>
         <div class="w-2/3 flex flex-col gap-6">
             <div class="bg-black border-4 border-red-600 p-8 relative overflow-hidden shadow-[0_0_30px_rgba(230,0,18,0.2)]">
                 <h3 class="text-2xl text-gray-400 font-bold mb-2">最高契合岗位测定 (MATCHED ROLE):</h3>
-                <div class="text-6xl font-black text-white mb-4" style="text-shadow: 4px 4px 0 var(--p5-red);">视觉设计策划 / 公关经理</div>
-                <div class="text-xl text-gray-300 border-l-4 border-red-600 pl-4"><span class="text-red-500 font-bold">系统评语：</span>在危机中你展现了极强的共情与美学驱动特质，适合创意及前线公关工作。</div>
+                <div id="cv-generic-role-title" class="text-6xl font-black text-white mb-4" style="text-shadow: 4px 4px 0 var(--p5-red);">正在生成...</div>
+                <div class="text-xl text-gray-300 border-l-4 border-red-600 pl-4"><span class="text-red-500 font-bold">系统评语：</span><span id="cv-generic-summary">等待你的选择与结算。</span></div>
+                <div id="cv-task-link" class="mt-4 text-lg"></div>
+                <div id="cv-skill-notes" class="mt-4 text-lg text-gray-200"></div>
             </div>
             <div class="flex-1 bg-black/90 border-4 border-gray-600 p-8 relative flex flex-col justify-end">
                  <button class="btn-p5 px-10 py-4 text-3xl font-bold font-['ZCOOL_KuaiLe'] self-end" onclick="switchScreen('screen-home')">结束实训</button>
@@ -430,19 +638,17 @@
             <div class="w-1/4 cyber-panel p-4 flex flex-col">
                  <h3 class="text-yellow-500 font-bold border-b border-yellow-500/30 pb-2 mb-4 flex items-center gap-2 font-mono"><i class="ph-bold ph-terminal"></i> OPS.EXECUTE</h3>
                 <div class="text-sm text-gray-400 mb-4 font-sans">危机爆发时，输入排查指令。你的决策将影响最终数据操盘手定级。</div>
+                <div id="cv-dataops-prompt" class="text-white text-lg font-bold font-sans mb-4 border-l-4 border-yellow-500 pl-3">等待告警触发...</div>
+                <div id="cv-dataops-feedback" class="hidden text-sm text-gray-200 font-sans mb-3 border-l-4 border-yellow-400/60 pl-3"></div>
+                <div id="cv-dataops-skill-delta" class="hidden flex flex-col gap-2 mb-4"></div>
                 <div class="flex-1 flex flex-col gap-4 font-mono" id="action-buttons">
-                    <button class="btn-cmd flex flex-col p-4 text-left rounded shadow-lg opacity-50 cursor-not-allowed" disabled>
-                        <span class="font-bold text-white font-sans text-lg mb-1">暴力抢量对冲</span>
-                        <span class="text-xs text-emerald-400">> bid.increase --max_budget</span>
-                        <div class="mt-2 text-xs text-gray-500 font-sans bg-black/50 p-1 rounded">E型 (企业)：无视亏损强拉排名。</div>
-                    </button>
-                    <button class="btn-cmd flex flex-col p-4 text-left rounded shadow-lg opacity-50 cursor-not-allowed" disabled>
-                        <span class="font-bold text-white font-sans text-lg mb-1">流量归因拆解</span>
-                        <span class="text-xs text-cyan-400">> analyze.traffic --dim="流失"</span>
-                        <div class="mt-2 text-xs text-gray-500 font-sans bg-black/50 p-1 rounded">C型 (常规)：暂停烧钱，找数据病因。</div>
-                    </button>
-                </div>
-            </div>
+                     <button class="btn-cmd flex flex-col p-4 text-left rounded shadow-lg opacity-50 cursor-not-allowed" disabled>
+                         <span class="font-bold text-white font-sans text-lg mb-1">WAITING...</span>
+                         <span class="text-xs text-gray-400">> system.idle</span>
+                         <div class="mt-2 text-xs text-gray-500 font-sans bg-black/50 p-1 rounded">告警触发后将加载 6 幕操盘训练。</div>
+                     </button>
+                 </div>
+             </div>
         </div>
     </div>
 
@@ -454,6 +660,10 @@
             </div>
             <div class="bg-black/90 border-2 border-gray-700 p-4 flex-1 relative flex flex-col items-center justify-center shadow-[inset_0_0_30px_rgba(0,0,0,1)]">
                 <div class="w-full h-80 relative mt-4"><canvas id="hollandChartData"></canvas></div>
+            </div>
+            <div class="bg-black/90 border-2 border-gray-700 p-4">
+                <div class="text-emerald-400 font-bold mb-2">SKILL_MAP</div>
+                <div id="cv-skill-bars-data" class="flex flex-col gap-2"></div>
             </div>
         </div>
         <div class="w-2/3 flex flex-col gap-6">
@@ -472,25 +682,26 @@
         </div>
     </div>
 
+    <script type="module" src="/public/app-client.js"></script>
     <script>
         function switchScreen(screenId) {
             document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
 
-            // Generic report init
-            if (screenId === 'screen-report-generic' && !window.chartInitGen) {
-                initHollandChartGeneric();
-                window.chartInitGen = true;
+            if (screenId === 'screen-briefing') {
+                if (window.RoleBriefing?.enter) window.RoleBriefing.enter();
+            }
+            if (screenId === 'screen-report-generic') {
+                // Use real computed result (fallback to prototype chart if API not used).
+                if (window.CareerVerse?.onEnterGenericReport) window.CareerVerse.onEnterGenericReport();
+                else initHollandChartGeneric();
+            }
+            if (screenId === 'screen-report-data') {
+                if (window.CareerVerse?.onEnterDataReport) window.CareerVerse.onEnterDataReport();
             }
         }
 
-        // ================= GENERIC FLOW SCRIPTS =================
-        function playScenarioEffect(type) {
-            const npcText = document.getElementById('npc-text');
-            const overlay = document.getElementById('damage-overlay');
-            overlay.style.opacity = '0.5'; setTimeout(() => overlay.style.opacity = '0', 100);
-            npcText.innerHTML = "“一张海报或一通电话能顶什么用？！不过...如果确实能平息买家怒火，赶紧去做！大理财贸的牌子别砸在你们手里！”";
-        }
+        // ================= REPORT FALLBACK (only used if API not available) =================
 
         function initHollandChartGeneric() {
             const ctx = document.getElementById('hollandChartGeneric').getContext('2d');
@@ -577,49 +788,7 @@
             chatLog.innerHTML += `<div class="bg-red-900/80 border-l-4 border-red-500 p-2 text-sm rounded mt-2 animate-bounce"><span class="text-red-200 font-bold block mb-1">店长 (紧急):</span>“转化率崩了！赶紧处理，这一个小时我们要亏上万块！”</div>`;
             chatLog.scrollTop = chatLog.scrollHeight;
 
-            document.querySelectorAll('#action-buttons button').forEach(btn => {
-                btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                btn.onclick = function() { handleDataAction(this.innerText.includes('暴力抢量') ? 'E' : 'C'); };
-            });
-        }
-
-        function handleDataAction(type) {
-            document.querySelectorAll('#action-buttons button').forEach(b => b.disabled = true);
-            document.getElementById('crisis-overlay').classList.add('opacity-0');
-
-            const chatLog = document.getElementById('chat-log');
-            let responseText = type === 'E' 
-                ? "> 强行提价获取展现。预算急剧消耗，转化率略回升，ROI 继续恶化亏损。" 
-                : "> 拉取流量透视...发现【直通车】被竞品恶意点击。已实施屏蔽策略止损。";
-            chatLog.innerHTML += `<div class="text-cyan-400 mt-2 p-2 border border-cyan-500 bg-black text-sm font-mono">${responseText}</div>`;
-            chatLog.scrollTop = chatLog.scrollHeight;
-
-            setTimeout(() => generateDataReport(type), 2500);
-        }
-
-        let dataChartInstance = null;
-        function generateDataReport(type) {
-            document.getElementById('data-particles').style.display = 'block'; // bring back for report
-            switchScreen('screen-report-data');
-            
-            let chartData = type === 'E' ? [20, 20, 10, 30, 95, 40] : [30, 60, 20, 30, 50, 95];
-            let typingText = type === 'E' 
-                ? `决策风格：强【侵略性与目标导向 (E)】。<br>适合大体量店铺的【战略操盘手】，但易致资金链断裂。`
-                : `决策风格：教科书般的【数据理智与归因 (C)】。<br>不盲目烧钱，极其契合【高级电商数据分析师】岗位。`;
-
-            const ctx = document.getElementById('hollandChartData').getContext('2d');
-            if(dataChartInstance) dataChartInstance.destroy();
-            dataChartInstance = new Chart(ctx, {
-                type: 'radar',
-                data: { labels: ['R', 'I', 'A', 'S', 'E', 'C'], datasets: [{ data: chartData, backgroundColor: 'rgba(16, 185, 129, 0.3)', borderColor: '#10b981', borderWidth: 2 }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { r: { ticks: { display: false, min: 0, max: 100 } } }, plugins: { legend: { display: false } } }
-            });
-            
-            const typeArea = document.getElementById('report-typing-area');
-            typeArea.innerHTML = typingText;
-            typeArea.style.opacity = 0; setTimeout(() => { typeArea.style.opacity = 1; typeArea.style.transition = 'opacity 1s'; }, 100);
-
-            document.getElementById('task-title').innerText = type === 'E' ? "实训任务：在 1000 元预算下达成 500 单不亏损清仓" : "实训任务：利用生意参谋产出防恶意点击风控模型";
+            if (window.CareerVerse?.dataOpsBegin) window.CareerVerse.dataOpsBegin();
         }
     </script>
 </body>

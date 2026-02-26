@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CareerVerse 管理台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-950 text-slate-100 min-h-screen">
+    <div class="max-w-6xl mx-auto p-6">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-2xl font-black tracking-wide">CareerVerse 管理台</h1>
+          <p class="text-slate-400 text-sm">本地数据库 · 本地可跑 · 测评/结果/题库概览</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <a class="text-sm underline text-sky-300" href="/">返回用户端</a>
+          <button id="btn-logout" class="hidden px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-sm">
+            退出登录
+          </button>
+        </div>
+      </div>
+
+      <div id="login-card" class="border border-slate-800 rounded-xl p-5 bg-slate-900/50">
+        <h2 class="font-bold mb-3">管理员登录</h2>
+        <div class="grid md:grid-cols-3 gap-3">
+          <input
+            id="login-email"
+            class="px-3 py-2 rounded bg-slate-950 border border-slate-800"
+            placeholder="邮箱（默认：admin@local）"
+            autocomplete="username"
+          />
+          <input
+            id="login-password"
+            type="password"
+            class="px-3 py-2 rounded bg-slate-950 border border-slate-800"
+            placeholder="密码（默认：admin123456）"
+            autocomplete="current-password"
+          />
+          <button id="btn-login" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded font-bold">
+            登录
+          </button>
+        </div>
+        <div id="login-error" class="text-red-400 text-sm mt-3 hidden"></div>
+      </div>
+
+      <div id="admin-content" class="hidden">
+        <div class="grid md:grid-cols-3 gap-4 my-6">
+          <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+            <div class="text-slate-400 text-xs">用户数</div>
+            <div id="stat-users" class="text-3xl font-black">-</div>
+          </div>
+          <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+            <div class="text-slate-400 text-xs">测评次数</div>
+            <div id="stat-results" class="text-3xl font-black">-</div>
+          </div>
+          <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+            <div class="text-slate-400 text-xs">测评模块</div>
+            <div id="stat-assessments" class="text-3xl font-black">-</div>
+          </div>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="font-bold">测评模块</h2>
+              <button id="btn-refresh" class="text-sm px-3 py-1 rounded bg-slate-800 hover:bg-slate-700">
+                刷新
+              </button>
+            </div>
+            <div class="overflow-auto">
+              <table class="w-full text-sm">
+                <thead class="text-slate-400">
+                  <tr>
+                    <th class="text-left py-2">Slug</th>
+                    <th class="text-left py-2">标题</th>
+                    <th class="text-left py-2">类型</th>
+                    <th class="text-left py-2">状态</th>
+                  </tr>
+                </thead>
+                <tbody id="tbl-assessments" class="divide-y divide-slate-800"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="font-bold">最新测评结果</h2>
+              <button id="btn-export" class="text-sm px-3 py-1 rounded bg-slate-800 hover:bg-slate-700">
+                导出 CSV
+              </button>
+            </div>
+            <div class="overflow-auto">
+              <table class="w-full text-sm">
+                <thead class="text-slate-400">
+                  <tr>
+                    <th class="text-left py-2">时间</th>
+                    <th class="text-left py-2">模块</th>
+                    <th class="text-left py-2">代码</th>
+                    <th class="text-left py-2">用户</th>
+                  </tr>
+                </thead>
+                <tbody id="tbl-results" class="divide-y divide-slate-800"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 text-slate-500 text-xs">
+          提示：默认管理员账号来自 `.env`（或 `.env.example` 的默认值）。建议首次启动后修改并重启服务。
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/public/admin.js"></script>
+  </body>
+</html>

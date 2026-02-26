@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CareerVerse · 快速兴趣测评（RIASEC）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body class="bg-slate-950 text-slate-100 min-h-screen">
+    <div class="max-w-4xl mx-auto p-6">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-2xl font-black">快速兴趣测评（RIASEC）</h1>
+          <p class="text-slate-400 text-sm">不靠枯燥问卷，用可解释的方式得到你的职业兴趣画像</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <a class="text-sm underline text-sky-300" href="/">电商实战舱</a>
+          <a class="text-sm underline text-sky-300" href="/tasks" id="lnk-tasks" class="hidden">进阶任务</a>
+        </div>
+      </div>
+
+      <div class="border border-slate-800 rounded-xl p-5 bg-slate-900/40 mb-6">
+        <div class="flex flex-wrap items-center gap-4">
+          <div class="text-sm text-slate-300">年龄段（影响任务表达方式）：</div>
+          <select id="age" class="bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm">
+            <option value="primary">小学</option>
+            <option value="middle">中学</option>
+            <option value="secondary">中职/高中</option>
+            <option value="adult">成人</option>
+          </select>
+          <div id="status" class="text-sm text-slate-400"></div>
+        </div>
+      </div>
+
+      <div id="view-quiz" class="border border-slate-800 rounded-xl p-5 bg-slate-900/40">
+        <div class="flex items-center justify-between mb-4">
+          <div class="text-sm text-slate-400">进度：<span id="progress">0/0</span></div>
+          <div class="text-sm text-slate-500">提示：尽量按“第一反应”选择</div>
+        </div>
+
+        <div class="text-xl font-bold leading-relaxed" id="prompt">加载中...</div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 mt-6" id="options"></div>
+
+        <div class="flex items-center justify-between mt-8">
+          <button id="btn-prev" class="px-4 py-2 rounded bg-slate-800 hover:bg-slate-700 text-sm">
+            上一题
+          </button>
+          <button id="btn-next" class="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 font-bold text-sm">
+            下一题
+          </button>
+        </div>
+      </div>
+
+      <div id="view-result" class="hidden">
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="border border-slate-800 rounded-xl p-5 bg-slate-900/40">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <div class="text-slate-400 text-xs">你的代码</div>
+                <div id="code" class="text-4xl font-black font-mono"></div>
+              </div>
+              <a id="btn-open-tasks" class="text-sm underline text-sky-300" target="_blank">打开任务页（含二维码）</a>
+            </div>
+            <div class="h-80">
+              <canvas id="chart"></canvas>
+            </div>
+          </div>
+
+          <div class="border border-slate-800 rounded-xl p-5 bg-slate-900/40">
+            <div class="text-slate-400 text-xs">匹配岗位</div>
+            <div id="role" class="text-3xl font-black mt-1"></div>
+            <div id="summary" class="text-slate-200 text-sm mt-4 whitespace-pre-wrap"></div>
+            <div class="mt-5">
+              <div class="text-slate-400 text-xs mb-2">扫码继续（任务页）</div>
+              <img id="qr" class="bg-white p-2 rounded" width="220" height="220" alt="QR" />
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 border border-slate-800 rounded-xl p-5 bg-slate-900/40">
+          <h2 class="font-bold mb-3">AI 教练</h2>
+          <div class="text-slate-400 text-sm mb-3">你可以把困惑说得具体一点，教练会给“下一步可执行计划”。</div>
+          <div class="grid gap-3">
+            <textarea
+              id="chat-input"
+              rows="3"
+              class="w-full px-3 py-2 rounded bg-slate-950 border border-slate-800"
+              placeholder="例如：我不知道选电商运营还是视觉设计方向，怎么判断？"
+            ></textarea>
+            <button id="btn-chat" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded font-bold">
+              发送
+            </button>
+            <pre id="chat-out" class="whitespace-pre-wrap text-sm text-slate-200 bg-slate-950 border border-slate-800 rounded p-3"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/public/quiz.js"></script>
+  </body>
+</html>
+

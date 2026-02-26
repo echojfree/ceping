@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CareerVerse · 进阶任务</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-950 text-slate-100 min-h-screen">
+    <div class="max-w-3xl mx-auto p-6">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-2xl font-black">进阶任务</h1>
+          <p class="text-slate-400 text-sm">把测评结果落到“下一步怎么练”</p>
+        </div>
+        <a class="text-sm underline text-sky-300" href="/">返回</a>
+      </div>
+
+      <div id="card" class="border border-slate-800 rounded-xl p-5 bg-slate-900/40">
+        <div id="meta" class="text-slate-300 text-sm"></div>
+        <div class="mt-4 flex items-start gap-4">
+          <div class="shrink-0">
+            <div class="text-slate-400 text-xs mb-2">扫码在手机上继续</div>
+            <img id="qr" class="bg-white p-2 rounded" width="220" height="220" alt="QR" />
+          </div>
+          <div class="flex-1">
+            <div class="text-slate-400 text-xs">匹配岗位</div>
+            <div id="role" class="text-2xl font-black"></div>
+            <div id="role-desc" class="text-slate-300 mt-2 text-sm"></div>
+            <div id="skill-notes" class="text-slate-200 mt-4 text-sm whitespace-pre-wrap"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <h2 class="font-bold mb-3">任务清单</h2>
+        <div id="tasks" class="grid gap-3"></div>
+      </div>
+
+      <div class="mt-6 border border-slate-800 rounded-xl p-5 bg-slate-900/40">
+        <h2 class="font-bold mb-3">技能画像（从你的选择推断）</h2>
+        <div id="skills" class="grid gap-2"></div>
+      </div>
+
+      <div class="mt-8 border border-slate-800 rounded-xl p-5 bg-slate-900/40">
+        <h2 class="font-bold mb-3">AI 教练（可选）</h2>
+        <div class="text-slate-400 text-sm mb-3">如果本机配置了 Ollama，会自动用本地模型；否则使用规则型教练。</div>
+        <div class="grid gap-3">
+          <textarea
+            id="chat-input"
+            rows="3"
+            class="w-full px-3 py-2 rounded bg-slate-950 border border-slate-800"
+            placeholder="例如：我现在最纠结的是选专业/选方向/找实习，我该怎么做？"
+          ></textarea>
+          <button id="btn-chat" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded font-bold">
+            发送
+          </button>
+          <pre id="chat-out" class="whitespace-pre-wrap text-sm text-slate-200 bg-slate-950 border border-slate-800 rounded p-3"></pre>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/public/tasks.js"></script>
+  </body>
+</html>

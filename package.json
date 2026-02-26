@@ -1,0 +1,31 @@
+{
+  "name": "careerverse-ceping",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "职境纪元 CareerVerse - 职业测评与实战式霍兰德(RIASEC)系统（本地数据库/本地模型优先）",
+  "scripts": {
+    "dev": "node --watch src/server/index.mjs",
+    "start": "node src/server/index.mjs",
+    "test": "node --test",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "nanoid": "^5.0.7",
+    "pino": "^9.3.2",
+    "pino-http": "^10.3.0",
+    "qrcode": "^1.5.4",
+    "sql.js": "^1.10.3",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.1"
+  }
+}
+
