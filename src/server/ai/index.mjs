@@ -118,9 +118,9 @@ export async function aiSceneCoachStream({ env, context, signal }) {
     const local = localSceneCoachReply({ context });
     return {
       provider: 'local',
-      async *stream() {
+      stream: (async function* () {
         yield local.content;
-      }
+      })()
     };
   }
 
@@ -156,4 +156,3 @@ export async function aiSceneCoachStream({ env, context, signal }) {
 
   return { provider: 'openai_compatible', stream };
 }
-
