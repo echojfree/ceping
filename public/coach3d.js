@@ -36,6 +36,14 @@ async function loadThree() {
   return (window.__cv_three = import(THREE_CDN));
 }
 
+function isVisible(el) {
+  if (!el) return false;
+  // Fast path: display:none ancestors -> offsetParent null (except fixed)
+  if (el.offsetParent === null && getComputedStyle(el).position !== 'fixed') return false;
+  const rect = el.getBoundingClientRect();
+  return rect.width >= 8 && rect.height >= 8;
+}
+
 class Coach3DInstance {
   constructor({ THREE, canvas, context, fallbackImg }) {
     this.THREE = THREE;
@@ -219,6 +227,7 @@ class Coach3DInstance {
 }
 
 const instances = new Map();
+const pending = new Set();
 let rafId = null;
 
 function ensureLoop() {
@@ -241,16 +250,20 @@ function bindResize() {
 export async function initCoach3D({ canvasId, fallbackImgId }) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return null;
+  if (!isVisible(canvas)) {
+    pending.add(canvasId);
+    return null;
+  }
   const context = getBestGLContext(canvas);
   if (!context) return null;
 
   const fallbackImg = fallbackImgId ? document.getElementById(fallbackImgId) : null;
-  if (fallbackImg) fallbackImg.classList.add('hidden');
-
   const THREE = await loadThree();
   try {
     const inst = new Coach3DInstance({ THREE, canvas, context, fallbackImg });
     instances.set(canvasId, inst);
+    pending.delete(canvasId);
+    if (fallbackImg) fallbackImg.classList.add('hidden');
     ensureLoop();
     bindResize();
     return inst;
@@ -281,10 +294,26 @@ export async function initAllCoach3D() {
   }
 }
 
+export async function refreshCoach3D() {
+  // Try to init any canvases that were hidden during initial load.
+  const todo = Array.from(pending);
+  for (const canvasId of todo) {
+    const c = document.getElementById(canvasId);
+    if (!isVisible(c)) continue;
+    const fallbackImgId = c?.getAttribute?.('data-fallback-img') || '';
+    // eslint-disable-next-line no-await-in-loop
+    await initCoach3D({ canvasId, fallbackImgId: fallbackImgId || undefined });
+  }
+
+  // Resize all active instances (screen switch doesn't trigger window resize).
+  for (const inst of instances.values()) inst._resize?.();
+}
+
 // Expose a stable global API for app-client.js to call.
 window.CVCoach3D = {
   init: initAllCoach3D,
   initCoach3D,
   setMood: setCoach3DMood,
-  setTalking: setCoach3DTalking
+  setTalking: setCoach3DTalking,
+  refresh: refreshCoach3D
 };

@@ -1209,6 +1209,8 @@ window.addEventListener('DOMContentLoaded', () => {
   window.CareerVerse?.init?.();
   initTilt2p5D();
   window.CVCoach3D?.init?.();
+  // First paint can happen with only the home screen visible; ensure 3D resizes when screens change.
+  setTimeout(() => window.CVCoach3D?.refresh?.(), 120);
 });
 
 // -----------------------------------------------------------------------------

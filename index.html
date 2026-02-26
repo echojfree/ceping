@@ -789,6 +789,8 @@
         function switchScreen(screenId) {
             document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
+            // Coach3D canvases are inside screens; when a screen becomes visible we need to init/resize.
+            setTimeout(() => { try { window.CVCoach3D?.refresh?.(); } catch (e) {} }, 50);
 
             if (screenId === 'screen-briefing') {
                 if (window.RoleBriefing?.enter) window.RoleBriefing.enter();
