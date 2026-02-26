@@ -12,12 +12,21 @@ function nowMs() {
   return performance?.now?.() ?? Date.now();
 }
 
-function canWebGL(canvas) {
+function getBestGLContext(canvas) {
+  const opts = {
+    alpha: true,
+    antialias: true,
+    depth: true,
+    stencil: false,
+    premultipliedAlpha: true,
+    powerPreference: 'high-performance',
+    preserveDrawingBuffer: false
+  };
   try {
-    const gl = canvas.getContext('webgl', { alpha: true, antialias: true }) || canvas.getContext('experimental-webgl');
-    return Boolean(gl);
+    // IMPORTANT: try WebGL2 first; calling getContext('webgl') first will lock the canvas to WebGL1.
+    return canvas.getContext('webgl2', opts) || canvas.getContext('webgl', opts) || canvas.getContext('experimental-webgl', opts);
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -28,7 +37,7 @@ async function loadThree() {
 }
 
 class Coach3DInstance {
-  constructor({ THREE, canvas, fallbackImg }) {
+  constructor({ THREE, canvas, context, fallbackImg }) {
     this.THREE = THREE;
     this.canvas = canvas;
     this.fallbackImg = fallbackImg;
@@ -40,6 +49,7 @@ class Coach3DInstance {
 
     const renderer = new THREE.WebGLRenderer({
       canvas,
+      context,
       alpha: true,
       antialias: true,
       powerPreference: 'high-performance'
@@ -63,11 +73,19 @@ class Coach3DInstance {
     rim.position.set(-2.6, 1.6, -1.6);
     scene.add(rim);
 
+    const isWebGL2 = typeof WebGL2RenderingContext !== 'undefined' && context instanceof WebGL2RenderingContext;
+    // WebGL1 Toon shader uses fwidth() -> requires OES_standard_derivatives enabled.
+    if (!isWebGL2) renderer.extensions.get('OES_standard_derivatives');
+
     // Toon materials
     const skin = new THREE.MeshToonMaterial({ color: 0x0b1220 });
     const accent = new THREE.MeshToonMaterial({ color: 0x22d3ee });
     const accent2 = new THREE.MeshToonMaterial({ color: 0xa78bfa });
     const danger = new THREE.MeshToonMaterial({ color: 0xf43f5e });
+    // Ensure shader includes derivatives extension directive on WebGL1.
+    for (const m of [skin, accent, accent2, danger]) {
+      m.extensions = { ...(m.extensions ?? {}), derivatives: true };
+    }
 
     // Character group
     const root = new THREE.Group();
@@ -223,17 +241,24 @@ function bindResize() {
 export async function initCoach3D({ canvasId, fallbackImgId }) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return null;
-  if (!canWebGL(canvas)) return null;
+  const context = getBestGLContext(canvas);
+  if (!context) return null;
 
   const fallbackImg = fallbackImgId ? document.getElementById(fallbackImgId) : null;
   if (fallbackImg) fallbackImg.classList.add('hidden');
 
   const THREE = await loadThree();
-  const inst = new Coach3DInstance({ THREE, canvas, fallbackImg });
-  instances.set(canvasId, inst);
-  ensureLoop();
-  bindResize();
-  return inst;
+  try {
+    const inst = new Coach3DInstance({ THREE, canvas, context, fallbackImg });
+    instances.set(canvasId, inst);
+    ensureLoop();
+    bindResize();
+    return inst;
+  } catch {
+    // If shader/driver fails, fall back to SVG.
+    if (fallbackImg) fallbackImg.classList.remove('hidden');
+    return null;
+  }
 }
 
 export function setCoach3DMood(canvasId, level) {
@@ -263,4 +288,3 @@ window.CVCoach3D = {
   setMood: setCoach3DMood,
   setTalking: setCoach3DTalking
 };
-
