@@ -11,6 +11,82 @@ async function api(path, { method = 'GET', body } = {}) {
   return data;
 }
 
+async function streamPlainText(path, { body, signal, onChunk }) {
+  const r = await fetch(path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body ?? {}),
+    signal
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    throw new Error(`stream_error:${r.status}:${t.slice(0, 200)}`);
+  }
+  if (!r.body) return;
+
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    const txt = decoder.decode(value, { stream: true });
+    if (txt) onChunk?.(txt);
+  }
+}
+
+function setCoachMood(avatarEl, level) {
+  if (!avatarEl) return;
+  avatarEl.classList.remove('cv-coach-mood-excellent', 'cv-coach-mood-good', 'cv-coach-mood-poor');
+  if (level === 'excellent') avatarEl.classList.add('cv-coach-mood-excellent');
+  else if (level === 'good' || level === 'chosen') avatarEl.classList.add('cv-coach-mood-good');
+  else if (level === 'poor') avatarEl.classList.add('cv-coach-mood-poor');
+  else avatarEl.classList.add('cv-coach-mood-good');
+}
+
+function summarizeAnswer(q, value) {
+  if (!q) return '';
+  if (q.type === 'single') {
+    const opt = (q.options ?? []).find((o) => o.id === String(value));
+    return opt?.label ? `选择：${opt.label}` : `选择：${String(value)}`;
+  }
+  if (q.type === 'cmd') {
+    const cmd = typeof value === 'string' ? value : String(value?.cmd ?? '');
+    return cmd ? `命令：${cmd}` : '命令：';
+  }
+  if (q.type === 'fill') {
+    const fields = value?.fields ?? {};
+    const filled = Object.entries(fields)
+      .map(([k, v]) => `${k}=${String(v ?? '').trim().slice(0, 18)}`)
+      .filter((s) => !s.endsWith('='));
+    return filled.length ? `填空：${filled.join('；')}` : '填空：';
+  }
+  if (q.type === 'drag') {
+    const order = value?.order ?? [];
+    return Array.isArray(order) && order.length ? `排序：${order.join(' > ')}` : '排序：';
+  }
+  return '已作答';
+}
+
+function initTilt2p5D() {
+  const els = Array.from(document.querySelectorAll('[data-cv-tilt]'));
+  for (const el of els) {
+    if (el.dataset.cvTiltInit === '1') continue;
+    el.dataset.cvTiltInit = '1';
+
+    el.addEventListener('mousemove', (e) => {
+      const rect = el.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      const rotY = x * 8;
+      const rotX = -y * 8;
+      el.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+    });
+    el.addEventListener('mouseleave', () => {
+      el.style.transform = '';
+    });
+  }
+}
+
 function dimArrayFromPct(pct) {
   const dims = ['R', 'I', 'A', 'S', 'E', 'C'];
   return dims.map((d) => Number(pct?.[d] ?? 0));
@@ -307,7 +383,8 @@ window.CareerVerse = {
     pickedByQuestionId: new Map(),
     draftsByQuestionId: new Map(),
     accumSkills: {},
-    accumRiasec: {}
+    accumRiasec: {},
+    coachAbort: null
   },
 
   startCreativeLab() {
@@ -337,6 +414,9 @@ window.CareerVerse = {
   },
 
   async _startScenario(cfg) {
+    try {
+      this.scenario.coachAbort?.abort?.();
+    } catch {}
     this.scenario.mode = cfg.mode;
     this.scenario.slug = cfg.slug;
     this.scenario.index = 0;
@@ -358,6 +438,7 @@ window.CareerVerse = {
     this.scenario.assessment = assessment;
     this.scenario.accumSkills = {};
     this.scenario.accumRiasec = {};
+    this.scenario.coachAbort = null;
     window.switchScreen?.(cfg.screenId);
     this._renderScenario(cfg);
   },
@@ -369,6 +450,8 @@ window.CareerVerse = {
         promptId: 'cv-cre-prompt',
         optionsId: 'cv-cre-options',
         feedbackId: 'cv-cre-feedback',
+        coachTextId: 'cv-cre-coach-text',
+        coachAvatarId: 'cv-cre-coach-avatar',
         progressId: 'cv-cre-progress',
         nextLabelId: 'cv-cre-next'
       };
@@ -377,9 +460,48 @@ window.CareerVerse = {
       promptId: 'cv-fr-prompt',
       optionsId: 'cv-fr-options',
       feedbackId: 'cv-fr-feedback',
+      coachTextId: 'cv-fr-coach-text',
+      coachAvatarId: 'cv-fr-coach-avatar',
       progressId: 'cv-fr-progress',
       nextLabelId: 'cv-fr-next'
     };
+  },
+
+  _streamCoachToPanel({ coachTextId, coachAvatarId, payload, moodLevel, storeKey }) {
+    const textEl = document.getElementById(coachTextId);
+    const avatarEl = document.getElementById(coachAvatarId);
+    if (avatarEl) setCoachMood(avatarEl, moodLevel);
+    if (textEl) textEl.textContent = '';
+
+    const abort = new AbortController();
+    if (storeKey === 'scenario') {
+      try {
+        this.scenario.coachAbort?.abort?.();
+      } catch {}
+      this.scenario.coachAbort = abort;
+    } else if (storeKey === 'dataOps') {
+      try {
+        this.dataOps.coachAbort?.abort?.();
+      } catch {}
+      this.dataOps.coachAbort = abort;
+    }
+
+    streamPlainText('/api/ai/coach/stream', {
+      body: payload,
+      signal: abort.signal,
+      onChunk: (chunk) => {
+        if (!textEl) return;
+        textEl.textContent += chunk;
+      }
+    }).catch(async () => {
+      // Non-stream fallback
+      try {
+        const r = await api('/api/ai/coach', { method: 'POST', body: payload });
+        if (textEl) textEl.textContent = r?.reply?.content ?? 'AI教练暂时离线。';
+      } catch {
+        if (textEl) textEl.textContent = 'AI教练暂时离线。';
+      }
+    });
   },
 
   _renderScenario(cfg) {
@@ -514,9 +636,11 @@ window.CareerVerse = {
     if (!q || q.id !== questionId) return;
     this.scenario.pickedByQuestionId.set(questionId, optionId);
     const ui = this._scenarioCfg(mode);
+    const sceneIndex = this.scenario.index;
     // Async evaluate for instant feedback
     evaluateScene(this.scenario.slug, questionId, optionId)
       .then((r) => {
+        if (this.scenario.index !== sceneIndex) return;
         const ev = r?.evaluation;
         this.scenario.accumSkills = addSkillDelta(this.scenario.accumSkills, ev?.skillsDelta);
         this.scenario.accumRiasec = addSkillDelta(this.scenario.accumRiasec, ev?.riasecDelta);
@@ -526,6 +650,21 @@ window.CareerVerse = {
           feedbackEl.classList.remove('hidden');
           feedbackEl.textContent = (ev?.feedback || '系统已记录。') + (extra ? `（技能：${extra}）` : '');
         }
+
+        this._streamCoachToPanel({
+          coachTextId: ui.coachTextId,
+          coachAvatarId: ui.coachAvatarId,
+          moodLevel: ev?.level ?? 'chosen',
+          storeKey: 'scenario',
+          payload: {
+            moduleSlug: this.scenario.slug,
+            scenePrompt: q.prompt,
+            sceneIndex: this.scenario.index,
+            sceneTotal: assessment?.questions?.length ?? 0,
+            answerSummary: summarizeAnswer(q, optionId),
+            evaluation: ev
+          }
+        });
       })
       .catch(() => {});
     this._renderScenario({ mode, ...ui });
@@ -557,8 +696,11 @@ window.CareerVerse = {
     const draft = this.scenario.draftsByQuestionId.get(q.id)?.order ?? items.map((it) => it.id);
     if (!Array.isArray(draft) || !draft.length) return;
     this.scenario.pickedByQuestionId.set(q.id, { order: draft });
+    const ui = this._scenarioCfg(mode);
+    const sceneIndex = this.scenario.index;
     evaluateScene(this.scenario.slug, q.id, { order: draft })
       .then((r) => {
+        if (this.scenario.index !== sceneIndex) return;
         const ev = r?.evaluation;
         this.scenario.accumSkills = addSkillDelta(this.scenario.accumSkills, ev?.skillsDelta);
         this.scenario.accumRiasec = addSkillDelta(this.scenario.accumRiasec, ev?.riasecDelta);
@@ -569,9 +711,22 @@ window.CareerVerse = {
           feedbackEl.classList.remove('hidden');
           feedbackEl.textContent = `[${level}] ` + (ev?.feedback || '已提交排序。') + (extra ? `（技能：${extra}）` : '');
         }
+        this._streamCoachToPanel({
+          coachTextId: ui.coachTextId,
+          coachAvatarId: ui.coachAvatarId,
+          moodLevel: ev?.level ?? 'good',
+          storeKey: 'scenario',
+          payload: {
+            moduleSlug: this.scenario.slug,
+            scenePrompt: q.prompt,
+            sceneIndex: this.scenario.index,
+            sceneTotal: assessment?.questions?.length ?? 0,
+            answerSummary: summarizeAnswer(q, { order: draft }),
+            evaluation: ev
+          }
+        });
       })
       .catch(() => {});
-    const ui = this._scenarioCfg(mode);
     this._renderScenario({ mode, ...ui });
   },
 
@@ -593,8 +748,11 @@ window.CareerVerse = {
     const filled = fieldDefs.filter((f) => String(draftFields?.[f.key] ?? '').trim().length >= 1).length;
     if (filled < 1) return;
     this.scenario.pickedByQuestionId.set(q.id, { fields: draftFields });
+    const ui = this._scenarioCfg(mode);
+    const sceneIndex = this.scenario.index;
     evaluateScene(this.scenario.slug, q.id, { fields: draftFields })
       .then((r) => {
+        if (this.scenario.index !== sceneIndex) return;
         const ev = r?.evaluation;
         this.scenario.accumSkills = addSkillDelta(this.scenario.accumSkills, ev?.skillsDelta);
         this.scenario.accumRiasec = addSkillDelta(this.scenario.accumRiasec, ev?.riasecDelta);
@@ -605,9 +763,22 @@ window.CareerVerse = {
           feedbackEl.classList.remove('hidden');
           feedbackEl.textContent = `[${level}] ` + (ev?.feedback || '已提交文本。') + (extra ? `（技能：${extra}）` : '');
         }
+        this._streamCoachToPanel({
+          coachTextId: ui.coachTextId,
+          coachAvatarId: ui.coachAvatarId,
+          moodLevel: ev?.level ?? 'good',
+          storeKey: 'scenario',
+          payload: {
+            moduleSlug: this.scenario.slug,
+            scenePrompt: q.prompt,
+            sceneIndex: this.scenario.index,
+            sceneTotal: assessment?.questions?.length ?? 0,
+            answerSummary: summarizeAnswer(q, { fields: draftFields }),
+            evaluation: ev
+          }
+        });
       })
       .catch(() => {});
-    const ui = this._scenarioCfg(mode);
     this._renderScenario({ mode, ...ui });
   },
 
@@ -649,6 +820,7 @@ window.CareerVerse = {
     draftsByQuestionId: new Map(),
     accumSkills: {},
     accumRiasec: {},
+    coachAbort: null,
     running: false
   },
 
@@ -664,6 +836,7 @@ window.CareerVerse = {
     this.dataOps.draftsByQuestionId = new Map();
     this.dataOps.accumSkills = {};
     this.dataOps.accumRiasec = {};
+    this.dataOps.coachAbort = null;
     this.dataOps.running = true;
     const fb = document.getElementById('cv-dataops-feedback');
     if (fb) fb.classList.add('hidden');
@@ -794,6 +967,21 @@ window.CareerVerse = {
           chatLog2.innerHTML += `<div class="text-yellow-300 mt-2 p-2 border border-yellow-500/40 bg-black text-sm font-mono">> [EVAL ${escapeHtml(ev?.level ?? 'chosen')}] ${escapeHtml(ev?.feedback || 'OK')}</div>`;
           chatLog2.scrollTop = chatLog2.scrollHeight;
         }
+
+        this._streamCoachToPanel({
+          coachTextId: 'cv-dataops-coach-text',
+          coachAvatarId: 'cv-dataops-coach-avatar',
+          moodLevel: ev?.level ?? 'chosen',
+          storeKey: 'dataOps',
+          payload: {
+            moduleSlug: 'ecom-data-ops',
+            scenePrompt: q.prompt,
+            sceneIndex: this.dataOps.index,
+            sceneTotal: assessment?.questions?.length ?? 0,
+            answerSummary: summarizeAnswer(q, optionId),
+            evaluation: ev
+          }
+        });
       })
       .catch(() => {});
 
@@ -834,6 +1022,21 @@ window.CareerVerse = {
           chatLog2.innerHTML += `<div class="text-yellow-300 mt-2 p-2 border border-yellow-500/40 bg-black text-sm font-mono">> [EVAL ${escapeHtml(ev?.level ?? '')}] ${escapeHtml(ev?.feedback || 'OK')}</div>`;
           chatLog2.scrollTop = chatLog2.scrollHeight;
         }
+
+        this._streamCoachToPanel({
+          coachTextId: 'cv-dataops-coach-text',
+          coachAvatarId: 'cv-dataops-coach-avatar',
+          moodLevel: ev?.level ?? 'good',
+          storeKey: 'dataOps',
+          payload: {
+            moduleSlug: 'ecom-data-ops',
+            scenePrompt: q.prompt,
+            sceneIndex: this.dataOps.index,
+            sceneTotal: assessment?.questions?.length ?? 0,
+            answerSummary: summarizeAnswer(q, { cmd }),
+            evaluation: ev
+          }
+        });
       })
       .catch(() => {});
 
@@ -885,6 +1088,21 @@ window.CareerVerse = {
           chatLog2.innerHTML += `<div class="text-yellow-300 mt-2 p-2 border border-yellow-500/40 bg-black text-sm font-mono">> [EVAL ${escapeHtml(ev?.level ?? '')}] ${escapeHtml(ev?.feedback || 'OK')}</div>`;
           chatLog2.scrollTop = chatLog2.scrollHeight;
         }
+
+        this._streamCoachToPanel({
+          coachTextId: 'cv-dataops-coach-text',
+          coachAvatarId: 'cv-dataops-coach-avatar',
+          moodLevel: ev?.level ?? 'good',
+          storeKey: 'dataOps',
+          payload: {
+            moduleSlug: 'ecom-data-ops',
+            scenePrompt: q.prompt,
+            sceneIndex: this.dataOps.index,
+            sceneTotal: assessment?.questions?.length ?? 0,
+            answerSummary: summarizeAnswer(q, { order }),
+            evaluation: ev
+          }
+        });
       })
       .catch(() => {});
 
@@ -940,6 +1158,7 @@ window.CareerVerse = {
 
 window.addEventListener('DOMContentLoaded', () => {
   window.CareerVerse?.init?.();
+  initTilt2p5D();
 });
 
 // -----------------------------------------------------------------------------

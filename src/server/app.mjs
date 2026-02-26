@@ -64,6 +64,7 @@ export async function createApp({ env, db }) {
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
     req.log?.error({ err }, 'Unhandled error');
+    if (res.headersSent) return next(err);
     res.status(500).json({ error: 'internal_error' });
   });
 

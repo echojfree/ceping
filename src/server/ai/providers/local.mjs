@@ -37,3 +37,46 @@ export function localCoachReply({ userText, result, ageGroup }) {
   return { content: response };
 }
 
+export function localSceneCoachReply({ context }) {
+  const moduleName =
+    context?.moduleSlug === 'ecom-creative-lab'
+      ? '创意工坊'
+      : context?.moduleSlug === 'ecom-frontline'
+        ? '前线交易'
+        : context?.moduleSlug === 'ecom-data-ops'
+          ? '数据操盘'
+          : '实训模块';
+  const level = context?.evaluation?.level ?? '';
+  const skillDelta = context?.evaluation?.skillsDelta ?? {};
+
+  const focus = Object.entries(skillDelta)
+    .map(([k, v]) => [k, Number(v ?? 0)])
+    .filter(([, v]) => v !== 0)
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, 3)
+    .map(([k, v]) => `${k}${v > 0 ? `+${v}` : `${v}`}`)
+    .join(' · ');
+
+  const hint =
+    level === 'excellent'
+      ? '这步做得很职业：先保证可解释性，再追求速度。'
+      : level === 'good'
+        ? '方向对了：下一步把证据/口径补齐，会更稳。'
+        : level === 'poor'
+          ? '先别急着推进：建议先按流程止损/定位，再做动作。'
+          : '已记录你的选择。';
+
+  const next =
+    moduleName === '创意工坊'
+      ? '下一步：写出“卖什么+为什么买+什么时候用”的一句话，然后只改一个变量做对照。'
+      : moduleName === '前线交易'
+        ? '下一步：把话术补齐“共情-方案-时间点”，并同步到统一口径。'
+        : '下一步：先止损→定位→假设→验证→修复，别跳步骤。';
+
+  const lines = [
+    `【AI教练·${moduleName}】${hint}`,
+    focus ? `【技能增量】${focus}` : '',
+    `【下一步】${next}`
+  ].filter(Boolean);
+  return { content: lines.join('\n') };
+}

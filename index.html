@@ -129,6 +129,61 @@
         .typing-cursor::after { content: '█'; animation: blink 1s step-start infinite; }
         @keyframes blink { 50% { opacity: 0; } }
 
+        /* ================= 2.5D COACH (3D CSS + Hologram) ================= */
+        .cv-tilt {
+            transform-style: preserve-3d;
+            perspective: 900px;
+            will-change: transform;
+        }
+        .cv-holo {
+            background: linear-gradient(135deg, rgba(34,211,238,0.10), rgba(167,139,250,0.08), rgba(244,63,94,0.06));
+            border: 1px solid rgba(34,211,238,0.35);
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.5), 0 20px 60px rgba(0,0,0,0.55), 0 0 30px rgba(34,211,238,0.18);
+            backdrop-filter: blur(8px);
+        }
+        .cv-holo::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(255,255,255,0.06) 0px,
+                rgba(255,255,255,0.06) 1px,
+                rgba(0,0,0,0.0) 3px,
+                rgba(0,0,0,0.0) 6px
+            );
+            mix-blend-mode: overlay;
+            opacity: 0.35;
+            pointer-events: none;
+        }
+        .cv-coach-avatar {
+            position: relative;
+            width: 96px;
+            height: 96px;
+            transform-style: preserve-3d;
+        }
+        .cv-coach-avatar::after {
+            content: '';
+            position: absolute;
+            inset: -12px;
+            background: radial-gradient(circle at 30% 20%, rgba(34,211,238,0.25), transparent 60%),
+                        radial-gradient(circle at 70% 70%, rgba(244,63,94,0.18), transparent 55%);
+            filter: blur(10px);
+            transform: translateZ(-15px);
+            opacity: 0.9;
+        }
+        .cv-coach-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            transform: translateZ(18px);
+            filter: drop-shadow(0 8px 25px rgba(34,211,238,0.20));
+        }
+        .cv-coach-mood-excellent .cv-coach-img { filter: drop-shadow(0 10px 28px rgba(16,185,129,0.28)); }
+        .cv-coach-mood-good .cv-coach-img { filter: drop-shadow(0 10px 28px rgba(34,211,238,0.22)); }
+        .cv-coach-mood-poor .cv-coach-img { filter: drop-shadow(0 10px 28px rgba(244,63,94,0.25)); }
+
     </style>
 </head>
 <body>
@@ -434,6 +489,21 @@
             </div>
         </div>
 
+        <!-- 2.5D AI Coach (streamed) -->
+        <div id="cv-cre-coach" class="absolute top-28 right-8 z-30 w-[420px] cv-holo cv-tilt p-4 cut-corner" data-cv-tilt>
+            <div class="flex items-start gap-3">
+                <div id="cv-cre-coach-avatar" class="cv-coach-avatar cv-coach-mood-good" data-cv-tilt>
+                    <img class="cv-coach-img" src="/public/avatars/cv-coach.svg" alt="AI Coach"/>
+                </div>
+                <div class="flex-1">
+                    <div class="text-xs text-cyan-300 font-[monospace] tracking-widest mb-1">AI_COACH · STREAM</div>
+                    <div id="cv-cre-coach-text" class="text-sm text-gray-100 font-sans whitespace-pre-line leading-relaxed">
+                        AI教练待命：完成本幕动作后将给出即时点评（亮点/改进/下一步）。
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="flex-1 relative z-10 flex flex-col justify-end pb-8 px-12 mt-12">
             <div class="absolute bottom-[30%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-[url('https://cdn-icons-png.flaticon.com/512/4140/4140047.png')] bg-contain bg-no-repeat bg-center opacity-70 filter drop-shadow-[0_0_30px_rgba(220,38,38,0.8)] mix-blend-screen"></div>
 
@@ -497,6 +567,21 @@
                             <span class="text-gray-400 text-sm font-[monospace]">DSR/差评</span>
                         </div>
                         <div class="stat-bar"><div class="stat-fill-red" id="cv-fr-kpi" style="width: 55%;"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2.5D AI Coach (streamed) -->
+        <div id="cv-fr-coach" class="absolute top-28 right-8 z-30 w-[420px] cv-holo cv-tilt p-4 cut-corner" data-cv-tilt>
+            <div class="flex items-start gap-3">
+                <div id="cv-fr-coach-avatar" class="cv-coach-avatar cv-coach-mood-good" data-cv-tilt>
+                    <img class="cv-coach-img" src="/public/avatars/cv-coach.svg" alt="AI Coach"/>
+                </div>
+                <div class="flex-1">
+                    <div class="text-xs text-cyan-300 font-[monospace] tracking-widest mb-1">AI_COACH · STREAM</div>
+                    <div id="cv-fr-coach-text" class="text-sm text-gray-100 font-sans whitespace-pre-line leading-relaxed">
+                        AI教练待命：完成本幕动作后将给出即时点评（亮点/改进/下一步）。
                     </div>
                 </div>
             </div>
@@ -638,6 +723,19 @@
             <div class="w-1/4 cyber-panel p-4 flex flex-col">
                  <h3 class="text-yellow-500 font-bold border-b border-yellow-500/30 pb-2 mb-4 flex items-center gap-2 font-mono"><i class="ph-bold ph-terminal"></i> OPS.EXECUTE</h3>
                 <div class="text-sm text-gray-400 mb-4 font-sans">危机爆发时，输入排查指令。你的决策将影响最终数据操盘手定级。</div>
+                <div class="cv-holo cv-tilt p-3 cut-corner mb-3 relative" data-cv-tilt>
+                    <div class="flex items-start gap-3">
+                        <div id="cv-dataops-coach-avatar" class="cv-coach-avatar cv-coach-mood-good" data-cv-tilt>
+                            <img class="cv-coach-img" src="/public/avatars/cv-coach.svg" alt="AI Coach"/>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-xs text-cyan-300 font-mono tracking-widest mb-1">AI_COACH · STREAM</div>
+                            <div id="cv-dataops-coach-text" class="text-xs text-gray-100 font-sans whitespace-pre-line leading-relaxed">
+                                AI教练待命：每一步操盘动作都会触发即时点评（亮点/改进/下一步）。
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div id="cv-dataops-prompt" class="text-white text-lg font-bold font-sans mb-4 border-l-4 border-yellow-500 pl-3">等待告警触发...</div>
                 <div id="cv-dataops-feedback" class="hidden text-sm text-gray-200 font-sans mb-3 border-l-4 border-yellow-400/60 pl-3"></div>
                 <div id="cv-dataops-skill-delta" class="hidden flex flex-col gap-2 mb-4"></div>
