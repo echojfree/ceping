@@ -471,6 +471,18 @@ window.CareerVerse = {
     const textEl = document.getElementById(coachTextId);
     const avatarEl = document.getElementById(coachAvatarId);
     if (avatarEl) setCoachMood(avatarEl, moodLevel);
+    // Sync to 3D coach if available (canvasId is derived from avatar id)
+    if (window.CVCoach3D?.setMood) {
+      const canvasId =
+        coachAvatarId === 'cv-cre-coach-avatar'
+          ? 'cv-cre-coach-3d'
+          : coachAvatarId === 'cv-fr-coach-avatar'
+            ? 'cv-fr-coach-3d'
+            : coachAvatarId === 'cv-dataops-coach-avatar'
+              ? 'cv-dataops-coach-3d'
+              : null;
+      if (canvasId) window.CVCoach3D.setMood(canvasId, moodLevel);
+    }
     if (textEl) textEl.textContent = '';
 
     const abort = new AbortController();
@@ -486,6 +498,18 @@ window.CareerVerse = {
       this.dataOps.coachAbort = abort;
     }
 
+    if (window.CVCoach3D?.setTalking) {
+      const canvasId =
+        coachAvatarId === 'cv-cre-coach-avatar'
+          ? 'cv-cre-coach-3d'
+          : coachAvatarId === 'cv-fr-coach-avatar'
+            ? 'cv-fr-coach-3d'
+            : coachAvatarId === 'cv-dataops-coach-avatar'
+              ? 'cv-dataops-coach-3d'
+              : null;
+      if (canvasId) window.CVCoach3D.setTalking(canvasId, true);
+    }
+
     streamPlainText('/api/ai/coach/stream', {
       body: payload,
       signal: abort.signal,
@@ -493,13 +517,38 @@ window.CareerVerse = {
         if (!textEl) return;
         textEl.textContent += chunk;
       }
-    }).catch(async () => {
+    })
+      .then(() => {
+        if (window.CVCoach3D?.setTalking) {
+          const canvasId =
+            coachAvatarId === 'cv-cre-coach-avatar'
+              ? 'cv-cre-coach-3d'
+              : coachAvatarId === 'cv-fr-coach-avatar'
+                ? 'cv-fr-coach-3d'
+                : coachAvatarId === 'cv-dataops-coach-avatar'
+                  ? 'cv-dataops-coach-3d'
+                  : null;
+          if (canvasId) window.CVCoach3D.setTalking(canvasId, false);
+        }
+      })
+      .catch(async () => {
       // Non-stream fallback
       try {
         const r = await api('/api/ai/coach', { method: 'POST', body: payload });
         if (textEl) textEl.textContent = r?.reply?.content ?? 'AI教练暂时离线。';
       } catch {
         if (textEl) textEl.textContent = 'AI教练暂时离线。';
+      }
+      if (window.CVCoach3D?.setTalking) {
+        const canvasId =
+          coachAvatarId === 'cv-cre-coach-avatar'
+            ? 'cv-cre-coach-3d'
+            : coachAvatarId === 'cv-fr-coach-avatar'
+              ? 'cv-fr-coach-3d'
+              : coachAvatarId === 'cv-dataops-coach-avatar'
+                ? 'cv-dataops-coach-3d'
+                : null;
+        if (canvasId) window.CVCoach3D.setTalking(canvasId, false);
       }
     });
   },
@@ -1159,6 +1208,7 @@ window.CareerVerse = {
 window.addEventListener('DOMContentLoaded', () => {
   window.CareerVerse?.init?.();
   initTilt2p5D();
+  window.CVCoach3D?.init?.();
 });
 
 // -----------------------------------------------------------------------------

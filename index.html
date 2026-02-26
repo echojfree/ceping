@@ -493,7 +493,8 @@
         <div id="cv-cre-coach" class="absolute top-28 right-8 z-30 w-[420px] cv-holo cv-tilt p-4 cut-corner" data-cv-tilt>
             <div class="flex items-start gap-3">
                 <div id="cv-cre-coach-avatar" class="cv-coach-avatar cv-coach-mood-good" data-cv-tilt>
-                    <img class="cv-coach-img" src="/public/avatars/cv-coach.svg" alt="AI Coach"/>
+                    <canvas id="cv-cre-coach-3d" data-cv-coach3d="1" data-fallback-img="cv-cre-coach-img" class="absolute inset-0 w-full h-full"></canvas>
+                    <img id="cv-cre-coach-img" class="cv-coach-img" src="/public/avatars/cv-coach.svg" alt="AI Coach"/>
                 </div>
                 <div class="flex-1">
                     <div class="text-xs text-cyan-300 font-[monospace] tracking-widest mb-1">AI_COACH · STREAM</div>
@@ -576,7 +577,8 @@
         <div id="cv-fr-coach" class="absolute top-28 right-8 z-30 w-[420px] cv-holo cv-tilt p-4 cut-corner" data-cv-tilt>
             <div class="flex items-start gap-3">
                 <div id="cv-fr-coach-avatar" class="cv-coach-avatar cv-coach-mood-good" data-cv-tilt>
-                    <img class="cv-coach-img" src="/public/avatars/cv-coach.svg" alt="AI Coach"/>
+                    <canvas id="cv-fr-coach-3d" data-cv-coach3d="1" data-fallback-img="cv-fr-coach-img" class="absolute inset-0 w-full h-full"></canvas>
+                    <img id="cv-fr-coach-img" class="cv-coach-img" src="/public/avatars/cv-coach.svg" alt="AI Coach"/>
                 </div>
                 <div class="flex-1">
                     <div class="text-xs text-cyan-300 font-[monospace] tracking-widest mb-1">AI_COACH · STREAM</div>
@@ -726,7 +728,8 @@
                 <div class="cv-holo cv-tilt p-3 cut-corner mb-3 relative" data-cv-tilt>
                     <div class="flex items-start gap-3">
                         <div id="cv-dataops-coach-avatar" class="cv-coach-avatar cv-coach-mood-good" data-cv-tilt>
-                            <img class="cv-coach-img" src="/public/avatars/cv-coach.svg" alt="AI Coach"/>
+                            <canvas id="cv-dataops-coach-3d" data-cv-coach3d="1" data-fallback-img="cv-dataops-coach-img" class="absolute inset-0 w-full h-full"></canvas>
+                            <img id="cv-dataops-coach-img" class="cv-coach-img" src="/public/avatars/cv-coach.svg" alt="AI Coach"/>
                         </div>
                         <div class="flex-1">
                             <div class="text-xs text-cyan-300 font-mono tracking-widest mb-1">AI_COACH · STREAM</div>
@@ -780,6 +783,7 @@
         </div>
     </div>
 
+    <script type="module" src="/public/coach3d.js"></script>
     <script type="module" src="/public/app-client.js"></script>
     <script>
         function switchScreen(screenId) {
