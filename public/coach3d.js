@@ -56,6 +56,8 @@ class Coach3DInstance {
     this.talkBurst = 0;
     this.wasVisible = true;
     this.emote = { type: null, t0: 0, duration: 0 };
+    this.focus = { x: 0, y: 0, has: false };
+    this._gaze = { x: 0, y: 0, tNext: nowMs() + 650 + Math.random() * 900 };
     this.nextBlinkAt = nowMs() + 1200 + Math.random() * 1800;
     this.blinkUntil = 0;
     this.lastTick = nowMs();
@@ -110,6 +112,18 @@ class Coach3DInstance {
     body.position.set(0, -0.6, 0);
     root.add(body);
 
+    // Outline (cheap "high-end" toon look, no postprocessing)
+    const outlineMat = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.55,
+      side: THREE.BackSide
+    });
+    const bodyOutline = new THREE.Mesh(bodyGeo, outlineMat);
+    bodyOutline.position.copy(body.position);
+    bodyOutline.scale.set(1.06, 1.06, 1.06);
+    root.add(bodyOutline);
+
     // Head group (for nod/shake)
     const headGroup = new THREE.Group();
     headGroup.position.set(0, 0.35, 0);
@@ -119,6 +133,11 @@ class Coach3DInstance {
     const head = new THREE.Mesh(headGeo, skin);
     head.position.set(0, 0, 0);
     headGroup.add(head);
+
+    const headOutline = new THREE.Mesh(headGeo, outlineMat);
+    headOutline.position.copy(head.position);
+    headOutline.scale.set(1.055, 1.055, 1.055);
+    headGroup.add(headOutline);
 
     // Visor (hologram line)
     const visorGeo = new THREE.TorusGeometry(0.42, 0.035, 10, 48);
@@ -160,6 +179,12 @@ class Coach3DInstance {
     const hand = new THREE.Mesh(new THREE.SphereGeometry(0.10, 14, 12), accent);
     hand.position.set(0.18, -0.5, 0.05);
     armGroup.add(hand);
+
+    const armOutline = new THREE.Mesh(upperArm.geometry, outlineMat);
+    armOutline.position.copy(upperArm.position);
+    armOutline.rotation.copy(upperArm.rotation);
+    armOutline.scale.set(1.08, 1.08, 1.08);
+    armGroup.add(armOutline);
 
     // Floating particles
     const particleCount = 18;
@@ -228,6 +253,14 @@ class Coach3DInstance {
     if (!this.talking) this.talkEnergy = 0;
   }
 
+  setFocus(x, y) {
+    this.focus = { x: clamp(Number(x ?? 0), -1, 1), y: clamp(Number(y ?? 0), -1, 1), has: true };
+  }
+
+  clearFocus() {
+    this.focus.has = false;
+  }
+
   bumpTalk(chunk) {
     const s = String(chunk ?? '');
     if (!s) return;
@@ -284,6 +317,25 @@ class Coach3DInstance {
       const sy = blinking ? 0.15 : 1.0;
       this.eyeL.scale.y = sy;
       this.eyeR.scale.y = sy;
+    }
+
+    // gaze: track pointer focus if provided, otherwise do micro saccades
+    if (t >= this._gaze.tNext) {
+      this._gaze = {
+        x: (Math.random() - 0.5) * 0.6,
+        y: (Math.random() - 0.5) * 0.4,
+        tNext: t + 520 + Math.random() * 1200
+      };
+    }
+    const fx = this.focus.has ? this.focus.x : this._gaze.x;
+    const fy = this.focus.has ? this.focus.y : this._gaze.y;
+    if (this.eyeL && this.eyeR) {
+      const ox = clamp(fx, -1, 1) * 0.05;
+      const oy = clamp(-fy, -1, 1) * 0.03;
+      this.eyeL.position.x = -0.18 + ox;
+      this.eyeR.position.x = 0.18 + ox;
+      this.eyeL.position.y = 0.07 + oy;
+      this.eyeR.position.y = 0.07 + oy;
     }
 
     // emotes: nod / shake / point
@@ -379,6 +431,7 @@ export async function initCoach3D({ canvasId, fallbackImgId }) {
     instances.set(canvasId, inst);
     pending.delete(canvasId);
     if (fallbackImg) fallbackImg.classList.add('hidden');
+    attachPointerTracking(canvasId);
     ensureLoop();
     bindResize();
     return inst;
@@ -409,6 +462,16 @@ export function emoteCoach3D(canvasId, type) {
   inst?.emoteOnce?.(type);
 }
 
+export function focusCoach3D(canvasId, x, y) {
+  const inst = instances.get(canvasId);
+  inst?.setFocus?.(x, y);
+}
+
+export function blurCoach3D(canvasId) {
+  const inst = instances.get(canvasId);
+  inst?.clearFocus?.();
+}
+
 export async function initAllCoach3D() {
   const canvases = Array.from(document.querySelectorAll('canvas[data-cv-coach3d="1"]'));
   for (const c of canvases) {
@@ -434,6 +497,23 @@ export async function refreshCoach3D() {
   for (const inst of instances.values()) inst._resize?.();
 }
 
+function attachPointerTracking(canvasId) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  const host = c.closest('[data-cv-tilt]') || c.parentElement;
+  if (!host) return;
+  if (host.dataset.cvCoachTrack === '1') return;
+  host.dataset.cvCoachTrack = '1';
+
+  host.addEventListener('mousemove', (e) => {
+    const rect = host.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * 2;
+    const y = ((e.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * 2;
+    focusCoach3D(canvasId, x, y);
+  });
+  host.addEventListener('mouseleave', () => blurCoach3D(canvasId));
+}
+
 // Expose a stable global API for app-client.js to call.
 window.CVCoach3D = {
   init: initAllCoach3D,
@@ -442,5 +522,7 @@ window.CVCoach3D = {
   setTalking: setCoach3DTalking,
   bump: bumpCoach3DTalk,
   emote: emoteCoach3D,
+  focus: focusCoach3D,
+  blur: blurCoach3D,
   refresh: refreshCoach3D
 };

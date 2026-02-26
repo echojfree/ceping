@@ -514,6 +514,9 @@ window.CareerVerse = {
       if (canvasId) window.CVCoach3D.setTalking(canvasId, true);
     }
 
+    let stage = 0;
+    let rolling = '';
+
     streamPlainText('/api/ai/coach/stream', {
       body: payload,
       signal: abort.signal,
@@ -530,6 +533,20 @@ window.CareerVerse = {
                   ? 'cv-dataops-coach-3d'
                   : null;
           if (canvasId) window.CVCoach3D.bump(canvasId, chunk);
+          // Section-aware gestures: reinforce "亮点/改进/下一步" in real time.
+          rolling = (rolling + String(chunk)).slice(-80);
+          if (window.CVCoach3D?.emote) {
+            if (stage < 1 && rolling.includes('【亮点】')) {
+              stage = 1;
+              window.CVCoach3D.emote(canvasId, 'nod');
+            } else if (stage < 2 && rolling.includes('【改进】')) {
+              stage = 2;
+              window.CVCoach3D.emote(canvasId, 'shake');
+            } else if (stage < 3 && rolling.includes('【下一步】')) {
+              stage = 3;
+              window.CVCoach3D.emote(canvasId, 'point');
+            }
+          }
         }
       }
     })
