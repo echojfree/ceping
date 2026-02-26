@@ -482,6 +482,10 @@ window.CareerVerse = {
               ? 'cv-dataops-coach-3d'
               : null;
       if (canvasId) window.CVCoach3D.setMood(canvasId, moodLevel);
+      if (canvasId && window.CVCoach3D?.emote) {
+        const emote = moodLevel === 'excellent' ? 'nod' : moodLevel === 'poor' ? 'shake' : 'point';
+        window.CVCoach3D.emote(canvasId, emote);
+      }
     }
     if (textEl) textEl.textContent = '';
 
@@ -516,6 +520,17 @@ window.CareerVerse = {
       onChunk: (chunk) => {
         if (!textEl) return;
         textEl.textContent += chunk;
+        if (window.CVCoach3D?.bump) {
+          const canvasId =
+            coachAvatarId === 'cv-cre-coach-avatar'
+              ? 'cv-cre-coach-3d'
+              : coachAvatarId === 'cv-fr-coach-avatar'
+                ? 'cv-fr-coach-3d'
+                : coachAvatarId === 'cv-dataops-coach-avatar'
+                  ? 'cv-dataops-coach-3d'
+                  : null;
+          if (canvasId) window.CVCoach3D.bump(canvasId, chunk);
+        }
       }
     })
       .then(() => {

@@ -53,6 +53,11 @@ class Coach3DInstance {
     this.mood = 'good'; // excellent | good | poor
     this.talking = false;
     this.talkEnergy = 0;
+    this.talkBurst = 0;
+    this.wasVisible = true;
+    this.emote = { type: null, t0: 0, duration: 0 };
+    this.nextBlinkAt = nowMs() + 1200 + Math.random() * 1800;
+    this.blinkUntil = 0;
     this.lastTick = nowMs();
 
     const renderer = new THREE.WebGLRenderer({
@@ -105,32 +110,56 @@ class Coach3DInstance {
     body.position.set(0, -0.6, 0);
     root.add(body);
 
-    // Head
+    // Head group (for nod/shake)
+    const headGroup = new THREE.Group();
+    headGroup.position.set(0, 0.35, 0);
+    root.add(headGroup);
+
     const headGeo = new THREE.SphereGeometry(0.6, 24, 18);
     const head = new THREE.Mesh(headGeo, skin);
-    head.position.set(0, 0.35, 0);
-    root.add(head);
+    head.position.set(0, 0, 0);
+    headGroup.add(head);
 
     // Visor (hologram line)
     const visorGeo = new THREE.TorusGeometry(0.42, 0.035, 10, 48);
     const visor = new THREE.Mesh(visorGeo, accent);
-    visor.position.set(0, 0.38, 0.55);
+    visor.position.set(0, 0.03, 0.55);
     visor.rotation.x = Math.PI / 2.7;
-    root.add(visor);
+    headGroup.add(visor);
 
     // Eyes
     const eyeGeo = new THREE.SphereGeometry(0.08, 14, 12);
     const eyeL = new THREE.Mesh(eyeGeo, accent);
     const eyeR = new THREE.Mesh(eyeGeo, accent2);
-    eyeL.position.set(-0.18, 0.42, 0.56);
-    eyeR.position.set(0.18, 0.42, 0.56);
-    root.add(eyeL, eyeR);
+    eyeL.position.set(-0.18, 0.07, 0.56);
+    eyeR.position.set(0.18, 0.07, 0.56);
+    headGroup.add(eyeL, eyeR);
 
     // Mouth (simple plane that scales)
     const mouthGeo = new THREE.PlaneGeometry(0.22, 0.08);
     const mouth = new THREE.Mesh(mouthGeo, danger);
-    mouth.position.set(0, 0.18, 0.62);
-    root.add(mouth);
+    mouth.position.set(0, -0.17, 0.62);
+    headGroup.add(mouth);
+
+    // HUD ring (adds premium "hologram" feel)
+    const ringGeo = new THREE.RingGeometry(0.68, 0.72, 64);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.set(0, 0.02, 0.2);
+    ring.rotation.x = Math.PI / 2.3;
+    headGroup.add(ring);
+
+    // Arm (pointing gesture)
+    const armGroup = new THREE.Group();
+    armGroup.position.set(0.58, -0.15, 0.0);
+    root.add(armGroup);
+    const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.55, 10), skin);
+    upperArm.position.set(0, -0.2, 0);
+    upperArm.rotation.z = Math.PI / 8;
+    armGroup.add(upperArm);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.10, 14, 12), accent);
+    hand.position.set(0.18, -0.5, 0.05);
+    armGroup.add(hand);
 
     // Floating particles
     const particleCount = 18;
@@ -154,6 +183,11 @@ class Coach3DInstance {
     this.rim = rim;
     this.visor = visor;
     this.mouth = mouth;
+    this.ring = ring;
+    this.headGroup = headGroup;
+    this.eyeL = eyeL;
+    this.eyeR = eyeR;
+    this.armGroup = armGroup;
     this.particles = particles;
     this.accent = accent;
     this.accent2 = accent2;
@@ -194,7 +228,39 @@ class Coach3DInstance {
     if (!this.talking) this.talkEnergy = 0;
   }
 
+  bumpTalk(chunk) {
+    const s = String(chunk ?? '');
+    if (!s) return;
+    // Small burst on each streamed chunk; add extra punch for punctuation/newlines.
+    let add = 0.55;
+    if (/[。！？!?]/.test(s)) add += 0.45;
+    if (/[\n\r]/.test(s)) add += 0.3;
+    if (/[aeiouAEIOU]/.test(s)) add += 0.15;
+    this.talkBurst = clamp(this.talkBurst + add, 0, 2.4);
+  }
+
+  emoteOnce(type) {
+    const t = nowMs();
+    const duration =
+      type === 'nod' ? 900 :
+      type === 'shake' ? 900 :
+      type === 'point' ? 1100 :
+      800;
+    this.emote = { type, t0: t, duration };
+  }
+
   tick() {
+    const visible = isVisible(this.canvas);
+    if (!visible) {
+      this.wasVisible = false;
+      return;
+    }
+    if (!this.wasVisible) {
+      // Avoid a huge dt jump after being hidden.
+      this.lastTick = nowMs();
+      this.wasVisible = true;
+    }
+
     const t = nowMs();
     const dt = clamp((t - this.lastTick) / 1000, 0, 0.05);
     this.lastTick = t;
@@ -205,12 +271,61 @@ class Coach3DInstance {
     this.root.rotation.x = Math.cos(time * 0.9) * 0.04;
     this.root.position.y = Math.sin(time * 1.2) * 0.05;
 
-    // mouth animation while talking
+    // ring rotation
+    if (this.ring) this.ring.rotation.z = time * 0.9;
+
+    // blink
+    if (t >= this.nextBlinkAt) {
+      this.blinkUntil = t + 110 + Math.random() * 80;
+      this.nextBlinkAt = t + 1600 + Math.random() * 2200;
+    }
+    const blinking = t <= this.blinkUntil;
+    if (this.eyeL && this.eyeR) {
+      const sy = blinking ? 0.15 : 1.0;
+      this.eyeL.scale.y = sy;
+      this.eyeR.scale.y = sy;
+    }
+
+    // emotes: nod / shake / point
+    if (this.emote?.type) {
+      const p = clamp((t - this.emote.t0) / Math.max(1, this.emote.duration), 0, 1);
+      const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      const wave = Math.sin(ease * Math.PI * 2);
+
+      if (this.headGroup) {
+        this.headGroup.rotation.x = 0;
+        this.headGroup.rotation.y = 0;
+      }
+      if (this.armGroup) {
+        this.armGroup.rotation.x = 0;
+        this.armGroup.rotation.y = 0;
+        this.armGroup.rotation.z = 0;
+      }
+
+      if (this.emote.type === 'nod' && this.headGroup) {
+        this.headGroup.rotation.x = wave * 0.20;
+      } else if (this.emote.type === 'shake' && this.headGroup) {
+        this.headGroup.rotation.y = wave * 0.22;
+      } else if (this.emote.type === 'point' && this.armGroup) {
+        // Move arm forward/up like "指向下一步"
+        this.armGroup.rotation.z = -0.45 + wave * 0.10;
+        this.armGroup.rotation.x = 0.15;
+        this.armGroup.rotation.y = -0.15;
+      }
+
+      if (p >= 1) {
+        this.emote = { type: null, t0: 0, duration: 0 };
+      }
+    }
+
+    // mouth animation while talking (energy + burst from stream chunks)
     const target = this.talking ? 1 : 0;
     this.talkEnergy += (target - this.talkEnergy) * (this.talking ? 8 : 10) * dt;
-    const mouthOpen = 0.25 + Math.abs(Math.sin(time * 10)) * 0.75;
-    const sY = 0.35 + 0.9 * this.talkEnergy * mouthOpen;
-    const sX = 0.9 + 0.2 * this.talkEnergy;
+    this.talkBurst += (0 - this.talkBurst) * 6 * dt;
+    const burst = clamp(this.talkBurst, 0, 1.4);
+    const mouthOpen = 0.15 + (0.55 * burst) + Math.abs(Math.sin(time * 10.5)) * (0.25 + 0.15 * burst);
+    const sY = 0.28 + 0.95 * this.talkEnergy * mouthOpen;
+    const sX = 0.95 + 0.25 * this.talkEnergy * (0.4 + 0.6 * burst);
     this.mouth.scale.set(sX, sY, 1);
 
     // particles orbit
@@ -284,6 +399,16 @@ export function setCoach3DTalking(canvasId, on) {
   inst?.setTalking?.(on);
 }
 
+export function bumpCoach3DTalk(canvasId, chunk) {
+  const inst = instances.get(canvasId);
+  inst?.bumpTalk?.(chunk);
+}
+
+export function emoteCoach3D(canvasId, type) {
+  const inst = instances.get(canvasId);
+  inst?.emoteOnce?.(type);
+}
+
 export async function initAllCoach3D() {
   const canvases = Array.from(document.querySelectorAll('canvas[data-cv-coach3d="1"]'));
   for (const c of canvases) {
@@ -315,5 +440,7 @@ window.CVCoach3D = {
   initCoach3D,
   setMood: setCoach3DMood,
   setTalking: setCoach3DTalking,
+  bump: bumpCoach3DTalk,
+  emote: emoteCoach3D,
   refresh: refreshCoach3D
 };
