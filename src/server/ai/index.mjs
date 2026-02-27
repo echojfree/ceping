@@ -1,5 +1,6 @@
 import { ollamaChat } from './providers/ollama.mjs';
 import { localCoachReply, localSceneCoachReply } from './providers/local.mjs';
+import { localRoleIntelReply } from './providers/role-intel-local.mjs';
 import { openaiChat, openaiStreamChat } from './providers/openai.mjs';
 
 function hasOpenAICompatible(env) {
@@ -141,6 +142,75 @@ export async function aiSceneCoachStream({ env, context, signal }) {
     `动作: ${String(context?.answerSummary ?? '').slice(0, 260)}`,
     `评估: ${JSON.stringify(context?.evaluation ?? {})}`
   ].join('\n');
+
+  const stream = openaiStreamChat({
+    baseUrl: env.OPENAI_BASE_URL,
+    apiKey: env.OPENAI_API_KEY,
+    model: env.OPENAI_MODEL || env.OLLAMA_MODEL,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ],
+    temperature: 0.6,
+    signal
+  });
+
+  return { provider: 'openai_compatible', stream };
+}
+
+export async function aiRoleIntelStream({ env, role, question, ageGroup, signal }) {
+  const safeRole = {
+    id: String(role?.id ?? '').slice(0, 64),
+    name: String(role?.name ?? '').slice(0, 80),
+    tagline: String(role?.tagline ?? '').slice(0, 160),
+    zone: String(role?.zone ?? '').slice(0, 120),
+    riasec: String(role?.riasec ?? '').slice(0, 20),
+    do: Array.isArray(role?.do) ? role.do.map((x) => String(x).slice(0, 80)).slice(0, 8) : [],
+    tools: Array.isArray(role?.tools) ? role.tools.map((x) => String(x).slice(0, 80)).slice(0, 10) : [],
+    kpi: Array.isArray(role?.kpi) ? role.kpi.map((x) => String(x).slice(0, 80)).slice(0, 10) : [],
+    mistakes: Array.isArray(role?.mistakes) ? role.mistakes.map((x) => String(x).slice(0, 80)).slice(0, 8) : [],
+    microtask: String(role?.microtask ?? '').slice(0, 240)
+  };
+  const userQuestion = String(question ?? '').slice(0, 2000);
+
+  if (!hasOpenAICompatible(env)) {
+    const local = localRoleIntelReply({ role: safeRole, question: userQuestion, ageGroup });
+    return {
+      provider: 'local',
+      stream: (async function* () {
+        yield local.content;
+      })()
+    };
+  }
+
+  const system = [
+    '你是 CareerVerse（职业测评虚拟仿真教室）的“岗位情报小助手”。',
+    '目标：用清晰、可执行、面向学生的方式解释岗位与岗位技能，不要空泛。',
+    '输出：必须使用 Markdown（可用标题、列表、代码块、表格）。',
+    '限制：不输出外链、不要求联系方式、不引导站外交易；避免过度成人化或高压表达。',
+    ageGroup ? `受众：${ageGroup}` : ''
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const user = [
+    '【岗位情报】',
+    `- 岗位：${safeRole.name}`,
+    safeRole.tagline ? `- 一句话：${safeRole.tagline}` : '',
+    safeRole.zone ? `- 场域：${safeRole.zone}` : '',
+    safeRole.riasec ? `- RIASEC：${safeRole.riasec}` : '',
+    safeRole.do.length ? `- 主要工作：${safeRole.do.join('；')}` : '',
+    safeRole.tools.length ? `- 常用工具：${safeRole.tools.slice(0, 6).join('、')}` : '',
+    safeRole.kpi.length ? `- 常看指标：${safeRole.kpi.slice(0, 6).join('、')}` : '',
+    safeRole.mistakes.length ? `- 常见误区：${safeRole.mistakes.slice(0, 4).join('；')}` : '',
+    safeRole.microtask ? `- 1分钟练习：${safeRole.microtask}` : '',
+    '',
+    `【用户问题】${userQuestion}`,
+    '',
+    '请给出：1) 直接回答 2) 一个“今天就能做”的小练习 3) 2-3个追问（帮助用户继续理解）。'
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   const stream = openaiStreamChat({
     baseUrl: env.OPENAI_BASE_URL,

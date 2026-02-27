@@ -1411,6 +1411,264 @@ function escapeHtml(s) {
     .replaceAll("'", '&#039;');
 }
 
+function renderMarkdownLite(md) {
+  const raw = String(md ?? '');
+  if (!raw.trim()) return '<div class="text-gray-400 text-sm">（暂无内容）</div>';
+
+  const chunks = raw.split('```');
+  let html = '';
+
+  for (let i = 0; i < chunks.length; i += 1) {
+    const chunk = chunks[i] ?? '';
+    if (i % 2 === 1) {
+      // Code fence. Optionally drop the first line if it's a language tag.
+      let code = chunk;
+      const firstNewline = code.indexOf('\n');
+      if (firstNewline !== -1) {
+        const firstLine = code.slice(0, firstNewline).trim();
+        if (/^[a-z0-9_+.-]{1,16}$/i.test(firstLine)) code = code.slice(firstNewline + 1);
+      }
+      html += `<pre class="bg-black/70 border border-white/10 p-3 rounded overflow-x-auto text-sm font-[monospace]"><code>${escapeHtml(code)}</code></pre>`;
+      continue;
+    }
+    html += renderMarkdownBlocks(chunk);
+  }
+
+  return html;
+}
+
+function renderMarkdownBlocks(text) {
+  const lines = String(text ?? '').split(/\r?\n/);
+  let out = '';
+  let inUl = false;
+  let inOl = false;
+
+  function closeLists() {
+    if (inUl) out += '</ul>';
+    if (inOl) out += '</ol>';
+    inUl = false;
+    inOl = false;
+  }
+
+  function inline(s) {
+    let t = escapeHtml(s);
+    t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, label, url) => {
+      const safeUrl = String(url ?? '').trim();
+      const allowed = safeUrl.startsWith('http://') || safeUrl.startsWith('https://') || safeUrl.startsWith('/') || safeUrl.startsWith('#');
+      if (!allowed) return `${label}（链接已忽略）`;
+      return `<a class="underline text-cyan-300 hover:text-cyan-200" target="_blank" rel="noreferrer" href="${escapeHtml(
+        safeUrl
+      )}">${label}</a>`;
+    });
+    t = t.replace(/`([^`]+)`/g, (_m, c) => {
+      return `<code class="bg-black/60 border border-white/10 px-1 py-0.5 rounded font-[monospace] text-sm">${c}</code>`;
+    });
+    t = t.replace(/\*\*([^*]+)\*\*/g, (_m, b) => `<strong class="text-white">${b}</strong>`);
+    return t;
+  }
+
+  for (const lineRaw of lines) {
+    const line = String(lineRaw ?? '');
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      closeLists();
+      continue;
+    }
+
+    const h = trimmed.match(/^(#{1,3})\s+(.*)$/);
+    if (h) {
+      closeLists();
+      const level = h[1].length;
+      const cls = level === 1 ? 'text-2xl' : level === 2 ? 'text-xl' : 'text-lg';
+      out += `<div class="mt-3 mb-1 font-black text-white ${cls}">${inline(h[2])}</div>`;
+      continue;
+    }
+
+    if (trimmed.startsWith('> ')) {
+      closeLists();
+      out += `<blockquote class="border-l-4 border-cyan-400/40 pl-3 text-gray-300">${inline(trimmed.slice(2))}</blockquote>`;
+      continue;
+    }
+
+    if (trimmed === '---' || trimmed === '***') {
+      closeLists();
+      out += `<hr class="my-3 border-white/10" />`;
+      continue;
+    }
+
+    const ul = trimmed.match(/^[-*]\s+(.*)$/);
+    if (ul) {
+      if (inOl) {
+        out += '</ol>';
+        inOl = false;
+      }
+      if (!inUl) {
+        out += '<ul class="list-disc ml-6 my-2">';
+        inUl = true;
+      }
+      out += `<li class="my-1">${inline(ul[1])}</li>`;
+      continue;
+    }
+
+    const ol = trimmed.match(/^\d+\.\s+(.*)$/);
+    if (ol) {
+      if (inUl) {
+        out += '</ul>';
+        inUl = false;
+      }
+      if (!inOl) {
+        out += '<ol class="list-decimal ml-6 my-2">';
+        inOl = true;
+      }
+      out += `<li class="my-1">${inline(ol[1])}</li>`;
+      continue;
+    }
+
+    closeLists();
+    out += `<p class="my-2">${inline(trimmed)}</p>`;
+  }
+
+  closeLists();
+  return out;
+}
+
+const RoleIntelAssistant = (() => {
+  let inited = false;
+  let activeRole = null;
+  let abortController = null;
+  let buffer = '';
+  let renderScheduled = false;
+
+  function els() {
+    const out = document.getElementById('cv-role-ai-out');
+    const status = document.getElementById('cv-role-ai-status');
+    const q = document.getElementById('cv-role-ai-q');
+    const send = document.getElementById('cv-role-ai-send');
+    const suggests = document.getElementById('cv-role-ai-suggests');
+    return { out, status, q, send, suggests };
+  }
+
+  function setStatus(txt) {
+    const { status } = els();
+    if (status) status.textContent = String(txt ?? '');
+  }
+
+  function scheduleRender() {
+    if (renderScheduled) return;
+    renderScheduled = true;
+    requestAnimationFrame(() => {
+      renderScheduled = false;
+      const { out } = els();
+      if (!out) return;
+      out.innerHTML = renderMarkdownLite(buffer);
+    });
+  }
+
+  function setRole(role) {
+    activeRole = role ?? null;
+    const { suggests, q, out } = els();
+    if (!suggests || !q || !out) return;
+
+    const roleName = activeRole?.name ? String(activeRole.name) : '这个岗位';
+    q.placeholder = `例如：${roleName} 每天具体做什么？给我一个 1 天工作流程 + 新手易错点 + 我应该练哪些技能`;
+
+    const qs = [
+      `用“一个真实场景”解释 ${roleName} 在做什么`,
+      `${roleName} 的核心技能是什么？怎么练（可量化）`,
+      `${roleName} 常见误区有哪些？如何避免`,
+      `给我一个 ${roleName} 的 7 天入门计划`
+    ];
+
+    suggests.innerHTML = qs
+      .map(
+        (t) =>
+          `<button class="btn-hacker px-4 py-2 text-sm font-bold skew-box" data-cv-ai-q="${escapeHtml(t)}"><span class="unskew-text">${escapeHtml(
+            t
+          )}</span></button>`
+      )
+      .join('');
+
+    buffer = `> 你正在查看：**${roleName}**\n\n- 你可以点上面的快捷问题\n- 或者在下方输入你的问题（支持 Markdown 返回）`;
+    scheduleRender();
+    setStatus('就绪');
+  }
+
+  async function ask(questionText) {
+    const { send } = els();
+    if (!activeRole) return;
+    const q = String(questionText ?? '').trim();
+    if (!q) return;
+
+    abortController?.abort();
+    abortController = new AbortController();
+
+    if (send) send.disabled = true;
+    setStatus('AI 正在分析...');
+
+    buffer = `**Q：** ${q}\n\n---\n`;
+    scheduleRender();
+
+    try {
+      await streamPlainText('/api/ai/role-intel/stream', {
+        body: {
+          question: q,
+          ageGroup: getAgeGroup(),
+          role: {
+            id: String(activeRole.id ?? ''),
+            name: String(activeRole.name ?? ''),
+            tagline: String(activeRole.tagline ?? ''),
+            zone: String(activeRole.zone ?? ''),
+            riasec: String(activeRole.riasec ?? ''),
+            do: Array.isArray(activeRole.do) ? activeRole.do : [],
+            tools: Array.isArray(activeRole.tools) ? activeRole.tools : [],
+            kpi: Array.isArray(activeRole.kpi) ? activeRole.kpi : [],
+            mistakes: Array.isArray(activeRole.mistakes) ? activeRole.mistakes : [],
+            microtask: String(activeRole.microtask ?? '')
+          }
+        },
+        signal: abortController.signal,
+        onChunk: (txt) => {
+          buffer += String(txt ?? '');
+          scheduleRender();
+        }
+      });
+      setStatus('完成');
+    } catch (e) {
+      const msg = String(e?.message ?? e ?? 'unknown_error');
+      setStatus('失败');
+      buffer += `\n\n> 请求失败：\`${escapeHtml(msg)}\``;
+      scheduleRender();
+    } finally {
+      if (send) send.disabled = false;
+    }
+  }
+
+  function init() {
+    if (inited) return;
+    const { send, q, suggests } = els();
+    if (!send || !q || !suggests) return;
+    inited = true;
+
+    send.addEventListener('click', () => ask(q.value));
+    q.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        ask(q.value);
+      }
+    });
+    suggests.addEventListener('click', (e) => {
+      const btn = e.target?.closest?.('[data-cv-ai-q]');
+      if (!btn) return;
+      const text = btn.getAttribute('data-cv-ai-q') ?? '';
+      q.value = text;
+      ask(text);
+    });
+  }
+
+  return { init, setRole, ask };
+})();
+
 function setBriefHeader(step, title, progress, nextLabel) {
   const stepEl = document.getElementById('cv-brief-step');
   const titleEl = document.getElementById('cv-brief-title');
@@ -1467,6 +1725,9 @@ function showRoleDetail(ri) {
     el.classList.toggle('ring-cyan-300', selected);
     el.classList.toggle('ring-offset-0', selected);
   });
+
+  RoleIntelAssistant.init();
+  RoleIntelAssistant.setRole(role);
 }
 
 function renderRoleGrid() {

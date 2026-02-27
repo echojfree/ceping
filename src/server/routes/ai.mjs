@@ -1,7 +1,7 @@
 import express from 'express';
 import { attachAuth } from '../auth/middleware.mjs';
 import { jsonSizeWithin, parseJson, z } from '../lib/zod.mjs';
-import { aiReply, aiSceneCoach, aiSceneCoachStream } from '../ai/index.mjs';
+import { aiReply, aiRoleIntelStream, aiSceneCoach, aiSceneCoachStream } from '../ai/index.mjs';
 
 export function aiRouter({ env, db }) {
   const r = express.Router();
@@ -106,6 +106,60 @@ export function aiRouter({ env, db }) {
         res.end();
       } catch (err) {
         // If client disconnects mid-stream, avoid bubbling to the JSON error handler.
+        if (controller.signal.aborted) return res.end();
+        throw err;
+      }
+    } catch (err) {
+      return next(err);
+    }
+  });
+
+  r.post('/role-intel/stream', async (req, res, next) => {
+    try {
+      const parsed = parseJson(
+        req,
+        z.object({
+          question: z.string().min(1).max(2000),
+          ageGroup: z.enum(['primary', 'middle', 'secondary', 'adult']).optional(),
+          role: z.object({
+            id: z.string().min(1).max(64),
+            name: z.string().min(1).max(80),
+            tagline: z.string().max(160).optional(),
+            zone: z.string().max(120).optional(),
+            riasec: z.string().max(20).optional(),
+            do: z.array(z.string().max(80)).max(8).optional(),
+            tools: z.array(z.string().max(80)).max(10).optional(),
+            kpi: z.array(z.string().max(80)).max(10).optional(),
+            mistakes: z.array(z.string().max(80)).max(8).optional(),
+            microtask: z.string().max(240).optional()
+          })
+        })
+      );
+      if (!parsed.ok) return res.status(400).json({ error: 'invalid_input', issues: parsed.issues });
+      if (!jsonSizeWithin(parsed.data, 6000)) return res.status(413).json({ error: 'payload_too_large' });
+
+      const controller = new AbortController();
+      req.on('close', () => controller.abort());
+
+      const { provider, stream } = await aiRoleIntelStream({
+        env,
+        role: parsed.data.role,
+        question: parsed.data.question,
+        ageGroup: parsed.data.ageGroup,
+        signal: controller.signal
+      });
+      res.status(200);
+      res.setHeader('content-type', 'text/plain; charset=utf-8');
+      res.setHeader('cache-control', 'no-cache, no-transform');
+      res.setHeader('x-ai-provider', provider);
+      res.flushHeaders?.();
+
+      try {
+        for await (const chunk of stream) {
+          res.write(String(chunk));
+        }
+        res.end();
+      } catch (err) {
         if (controller.signal.aborted) return res.end();
         throw err;
       }
