@@ -24,3 +24,22 @@
 - `OLLAMA_MODEL`
 
 系统会自动探测可用性，失败则回退到规则型教练。
+
+## 静态打包（Nginx 部署）
+
+如果你希望由 Nginx 直接托管前端页面（静态文件），可以导出一个 `dist/` 目录：
+
+1. 生成静态产物
+   - `npm i`
+   - `npm run build:static`
+2. 产物结构
+   - `dist/index.html`（首页）
+   - `dist/quiz/index.html`（`/quiz`）
+   - `dist/admin/index.html`（`/admin`）
+   - `dist/tasks/index.html`（`/tasks`）
+   - `dist/public/*`（脚本/页面资源）
+   - `dist/assets/*`（如有）
+3. Nginx 配置示例
+   - 见 `deploy/nginx.conf.example`
+
+注意：导出静态文件后，页面依旧会请求 `/api/*`（登录/结果/AI 等接口）。如果需要这些功能，请在服务器上保留 Node 后端，并在 Nginx 中把 `/api/` 反向代理到后端进程（示例配置已在 `deploy/nginx.conf.example` 注释给出）。

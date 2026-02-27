@@ -1,0 +1,46 @@
+# CareerVerse (static export) - Nginx example
+#
+# 1) Build static files locally:
+#    npm i
+#    npm run build:static
+#    -> upload the dist/ folder to your server, e.g. /var/www/careerverse/dist
+#
+# 2) Nginx serves the static UI from dist/.
+# 3) OPTIONAL (recommended): proxy /api/* to a Node backend if you need login/results/AI endpoints.
+
+server {
+  listen 80;
+  server_name _;
+
+  root /var/www/careerverse/dist;
+  index index.html;
+
+  # Static assets
+  location /public/ {
+    try_files $uri =404;
+    expires 7d;
+    add_header Cache-Control "public";
+  }
+
+  location /assets/ {
+    try_files $uri =404;
+    expires 7d;
+    add_header Cache-Control "public";
+  }
+
+  # Pages: /, /quiz, /admin, /tasks are exported as directories with index.html
+  location / {
+    try_files $uri $uri/ =404;
+  }
+
+  # OPTIONAL: backend APIs (keep Node running on the same server)
+  # location /api/ {
+  #   proxy_pass http://127.0.0.1:5180;
+  #   proxy_http_version 1.1;
+  #   proxy_set_header Host $host;
+  #   proxy_set_header X-Real-IP $remote_addr;
+  #   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  #   proxy_set_header X-Forwarded-Proto $scheme;
+  # }
+}
+

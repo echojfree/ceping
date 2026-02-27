@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "node --watch src/server/index.mjs",
     "start": "node src/server/index.mjs",
+    "build:static": "node scripts/build-static.mjs",
     "test": "node --test",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui"
@@ -28,4 +29,3 @@
     "@playwright/test": "^1.50.1"
   }
 }
-
