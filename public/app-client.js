@@ -1558,7 +1558,12 @@ window.RoleBriefing = (() => {
   }
 
   function enter() {
-    const state = read();
+    let state = read();
+    // If the player has completed the briefing before, default to Step 1 so the role intel
+    // cards always remain useful (otherwise Step 2 hides the detail panel and makes "切换无效").
+    if (state.done && state.step !== 1) {
+      state = write({ step: 1 });
+    }
     renderRoleGrid();
     showRoleDetail(state.activeRole);
     showStep(state.step, state);
@@ -1583,8 +1588,10 @@ window.RoleBriefing = (() => {
   }
 
   function select(roleId) {
-    const state = write({ activeRole: roleId });
+    // Selecting a role is an "intel browse" action; always ensure detail panel is visible.
+    const state = write({ activeRole: roleId, step: 1 });
     showRoleDetail(state.activeRole);
+    showStep(1, state);
   }
 
   function next() {
