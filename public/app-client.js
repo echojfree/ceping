@@ -1536,17 +1536,22 @@ function renderMarkdownBlocks(text) {
 const RoleIntelAssistant = (() => {
   let inited = false;
   let activeRole = null;
+  let lastRoleId = null;
   let abortController = null;
   let buffer = '';
   let renderScheduled = false;
 
   function els() {
+    const floatRoot = document.getElementById('cv-role-ai-float');
+    const panel = document.getElementById('cv-role-ai-panel');
+    const fab = document.getElementById('cv-role-ai-fab');
+    const close = document.getElementById('cv-role-ai-close');
     const out = document.getElementById('cv-role-ai-out');
     const status = document.getElementById('cv-role-ai-status');
     const q = document.getElementById('cv-role-ai-q');
     const send = document.getElementById('cv-role-ai-send');
     const suggests = document.getElementById('cv-role-ai-suggests');
-    return { out, status, q, send, suggests };
+    return { floatRoot, panel, fab, close, out, status, q, send, suggests };
   }
 
   function setStatus(txt) {
@@ -1563,6 +1568,38 @@ const RoleIntelAssistant = (() => {
       if (!out) return;
       out.innerHTML = renderMarkdownLite(buffer);
     });
+  }
+
+  function isPanelOpen() {
+    const { panel } = els();
+    return Boolean(panel && !panel.classList.contains('hidden'));
+  }
+
+  function openPanel() {
+    const { panel, q } = els();
+    if (!panel) return;
+    panel.classList.remove('hidden');
+    setTimeout(() => q?.focus?.(), 0);
+  }
+
+  function closePanel() {
+    const { panel } = els();
+    if (!panel) return;
+    panel.classList.add('hidden');
+    abortController?.abort();
+    setStatus('就绪');
+  }
+
+  function togglePanel() {
+    if (isPanelOpen()) closePanel();
+    else openPanel();
+  }
+
+  function setVisible(v) {
+    const { floatRoot } = els();
+    if (!floatRoot) return;
+    floatRoot.classList.toggle('hidden', !v);
+    if (!v) closePanel();
   }
 
   function setRole(role) {
@@ -1589,8 +1626,17 @@ const RoleIntelAssistant = (() => {
       )
       .join('');
 
-    buffer = `> 你正在查看：**${roleName}**\n\n- 你可以点上面的快捷问题\n- 或者在下方输入你的问题（支持 Markdown 返回）`;
-    scheduleRender();
+    const roleId = String(activeRole?.id ?? '');
+    if (roleId !== lastRoleId) {
+      lastRoleId = roleId;
+      // Avoid wiping a user's in-progress conversation while the panel is open.
+      if (!buffer.trim() || !isPanelOpen()) {
+        buffer = `> 你正在查看：**${roleName}**\n\n- 点击右下角小人打开对话\n- 支持流式输出 + Markdown 渲染`;
+      } else {
+        buffer += `\n\n---\n\n> 已切换岗位：**${roleName}**`;
+      }
+      scheduleRender();
+    }
     setStatus('就绪');
   }
 
@@ -1646,9 +1692,12 @@ const RoleIntelAssistant = (() => {
 
   function init() {
     if (inited) return;
-    const { send, q, suggests } = els();
-    if (!send || !q || !suggests) return;
+    const { send, q, suggests, fab, close } = els();
+    if (!send || !q || !suggests || !fab || !close) return;
     inited = true;
+
+    fab.addEventListener('click', () => togglePanel());
+    close.addEventListener('click', () => closePanel());
 
     send.addEventListener('click', () => ask(q.value));
     q.addEventListener('keydown', (e) => {
@@ -1666,7 +1715,7 @@ const RoleIntelAssistant = (() => {
     });
   }
 
-  return { init, setRole, ask };
+  return { init, setRole, ask, setVisible, openPanel, closePanel };
 })();
 
 function setBriefHeader(step, title, progress, nextLabel) {
@@ -1834,6 +1883,8 @@ window.RoleBriefing = (() => {
     const detail = document.getElementById('cv-role-detail');
     const quiz = document.getElementById('cv-role-quiz');
     if (!detail || !quiz) return;
+
+    RoleIntelAssistant?.setVisible?.(step === 1);
 
     if (step === 1) {
       detail.classList.remove('hidden');

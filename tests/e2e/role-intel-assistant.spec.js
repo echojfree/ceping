@@ -6,11 +6,16 @@ test('role intel assistant: streaming reply renders markdown', async ({ page }) 
   // Enter the role briefing screen.
   await page.locator('#screen-home').click();
 
+  const fab = page.locator('#cv-role-ai-fab');
+  const panel = page.locator('#cv-role-ai-panel');
   const q = page.locator('#cv-role-ai-q');
   const send = page.locator('#cv-role-ai-send');
   const out = page.locator('#cv-role-ai-out');
   const status = page.locator('#cv-role-ai-status');
 
+  await expect(fab).toBeVisible();
+  await fab.click();
+  await expect(panel).toBeVisible();
   await expect(q).toBeVisible();
   await expect(send).toBeVisible();
 
