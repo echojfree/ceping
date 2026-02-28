@@ -269,8 +269,12 @@ function setGenericReportSummary(result) {
   setText('cv-generic-role-title', role);
   setHtml('cv-generic-summary', summary.replaceAll('\n', '<br/>'));
 
-  const link = `/tasks?resultId=${encodeURIComponent(result.id)}`;
-  setHtml('cv-task-link', `<a class="underline text-cyan-300" href="${link}" target="_blank">生成/查看进阶任务（含二维码）</a>`);
+  if (result?.localOnly) {
+    setHtml('cv-task-link', `<span class="text-cyan-300">本次为本地测评结果，已生成能力画像。</span>`);
+  } else {
+    const link = `/tasks?resultId=${encodeURIComponent(result.id)}`;
+    setHtml('cv-task-link', `<a class="underline text-cyan-300" href="${link}" target="_blank">生成/查看进阶任务（含二维码）</a>`);
+  }
 
   const skillNotes = rec?.skillNotes ?? '';
   const el = document.getElementById('cv-skill-notes');
@@ -317,6 +321,261 @@ function formatDelta(delta) {
     .slice(0, 4)
     .map(([k, v]) => `${k}${v > 0 ? `+${v}` : `${v}`}`)
     .join(' · ');
+}
+
+const PRODUCT_DETECTIVE_TIME_LIMIT_SEC = 4 * 60;
+
+const PRODUCT_DETECTIVE_SCENES = [
+  {
+    id: 'pd-shelf-compare',
+    type: 'single',
+    prompt: '货架侦查：你只有 60 秒锁定第一轮主推 SKU。根据竞品与成本结构，先选最值得测试的款。',
+    options: [
+      {
+        id: 'A',
+        label: 'A款 便携榨汁杯｜售价99 成本58 退货率18% 近30天差评“漏液”高频'
+      },
+      {
+        id: 'B',
+        label: 'B款 迷你蒸煮杯｜售价129 成本62 退货率9% 评论集中“宿舍适配”'
+      },
+      {
+        id: 'C',
+        label: 'C款 保温饭盒｜售价89 成本54 退货率15% 同质化严重 投放点击成本高'
+      }
+    ]
+  },
+  {
+    id: 'pd-profit-judge',
+    type: 'single',
+    prompt: '利润估算：按 B款基础数据估算首轮单件毛利区间，并判断能否承受首轮投放试错。',
+    options: [
+      { id: 'A', label: '毛利约 5-10 元：几乎无试错空间，建议立刻停止' },
+      { id: 'B', label: '毛利约 25-35 元：可做小预算测试，但必须盯退货与客诉' },
+      { id: 'C', label: '毛利约 45-55 元：利润极高，可直接放大投放' }
+    ]
+  },
+  {
+    id: 'pd-review-risk',
+    type: 'single',
+    prompt: '评论情报：近 200 条评论里，“加热异味”占比 21%、“容量偏小”占比 13%、“物流慢”占比 9%。当前优先风险是什么？',
+    options: [
+      { id: 'A', label: '优先处理物流时效：先换快递就能大幅提转化' },
+      { id: 'B', label: '优先处理产品体验风险：异味问题先做批次排查和详情页预期管理' },
+      { id: 'C', label: '无需优先处理：继续扩量，后续再看售后数据' }
+    ]
+  },
+  {
+    id: 'pd-hypothesis-submit',
+    type: 'fill',
+    prompt: '提交“选品假设”：写出要验证的卖点、验证指标和 7 天测试动作。',
+    options: {
+      fields: [
+        { key: 'hypothesis', label: '假设（示例：宿舍场景一键蒸煮是核心购买动机）', placeholder: '写出你的可验证假设' },
+        { key: 'metric', label: '验证指标（示例：CTR、加购率、退款率）', placeholder: '至少 2 个可量化指标' },
+        { key: 'plan', label: '测试方案（示例：A/B主图+评论关键词追踪）', placeholder: '7 天内可执行动作与对照方式' }
+      ]
+    }
+  }
+];
+
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, Number(n ?? 0)));
+}
+
+function evaluateProductDetectiveScene(questionId, value) {
+  if (questionId === 'pd-shelf-compare') {
+    if (value === 'B') {
+      return {
+        level: 'excellent',
+        feedback: '你优先选择了“需求集中+退货可控”的候选款，决策逻辑更稳健。',
+        skillsDelta: { analysis: 3, risk_control: 2, planning: 1 },
+        riasecDelta: { I: 2, C: 1, E: 1 },
+        scoreDelta: { analysis: 4, risk: 2, hypothesis: 1 }
+      };
+    }
+    if (value === 'C') {
+      return {
+        level: 'good',
+        feedback: '你考虑了成本，但忽略了同质化与投放成本，建议补一轮竞品差异验证。',
+        skillsDelta: { analysis: 2, risk_control: 1 },
+        riasecDelta: { I: 1, C: 1, E: 1 },
+        scoreDelta: { analysis: 3, risk: 1, hypothesis: 0 }
+      };
+    }
+    return {
+      level: 'poor',
+      feedback: '该候选款退货与差评风险偏高，首轮测试容易把预算消耗在售后问题上。',
+      skillsDelta: { analysis: 1, risk_control: -1 },
+      riasecDelta: { E: 1 },
+      scoreDelta: { analysis: 1, risk: -1, hypothesis: 0 }
+    };
+  }
+
+  if (questionId === 'pd-profit-judge') {
+    if (value === 'B') {
+      return {
+        level: 'excellent',
+        feedback: '利润判断与试错节奏匹配，兼顾了投放机会和风险边界。',
+        skillsDelta: { analysis: 2, data_literacy: 2, risk_control: 1 },
+        riasecDelta: { I: 1, C: 2, E: 1 },
+        scoreDelta: { analysis: 3, risk: 2, hypothesis: 0 }
+      };
+    }
+    if (value === 'A') {
+      return {
+        level: 'good',
+        feedback: '风险意识较强，但判断偏保守，可通过小预算AB快速验证再决策。',
+        skillsDelta: { risk_control: 2, planning: 1 },
+        riasecDelta: { C: 1, E: 1 },
+        scoreDelta: { analysis: 1, risk: 2, hypothesis: 1 }
+      };
+    }
+    return {
+      level: 'poor',
+      feedback: '利润估计过于乐观，若直接放量容易放大售后和投放损耗。',
+      skillsDelta: { analysis: -1, risk_control: -1 },
+      riasecDelta: { E: 1 },
+      scoreDelta: { analysis: 0, risk: -1, hypothesis: 0 }
+    };
+  }
+
+  if (questionId === 'pd-review-risk') {
+    if (value === 'B') {
+      return {
+        level: 'excellent',
+        feedback: '你优先锁定“高占比且高影响”的产品体验问题，符合风险闭环优先级。',
+        skillsDelta: { risk_control: 3, analysis: 2, process: 1 },
+        riasecDelta: { I: 1, C: 2, E: 1 },
+        scoreDelta: { analysis: 3, risk: 4, hypothesis: 1 }
+      };
+    }
+    if (value === 'A') {
+      return {
+        level: 'good',
+        feedback: '物流可优化，但当前主要矛盾是产品体验，建议先处理异味根因。',
+        skillsDelta: { risk_control: 1, process: 1 },
+        riasecDelta: { C: 1, E: 1 },
+        scoreDelta: { analysis: 1, risk: 1, hypothesis: 0 }
+      };
+    }
+    return {
+      level: 'poor',
+      feedback: '忽略高频负面信号会导致差评扩散，后续转化和复购都会受损。',
+      skillsDelta: { risk_control: -2, analysis: -1 },
+      riasecDelta: { E: 1 },
+      scoreDelta: { analysis: -1, risk: -2, hypothesis: 0 }
+    };
+  }
+
+  if (questionId === 'pd-hypothesis-submit') {
+    const fields = value?.fields ?? {};
+    const hypothesis = String(fields?.hypothesis ?? '').trim();
+    const metric = String(fields?.metric ?? '').trim();
+    const plan = String(fields?.plan ?? '').trim();
+
+    const metricCheck = /(ctr|cvr|roi|gmv|加购|退款|退货|转化|点击|差评|客诉)/i.test(metric);
+    const planCheck = /(ab|a\/b|对照|样本|7|天|周|主图|投放|评论)/i.test(plan);
+    const hypothesisCheck = hypothesis.length >= 10;
+    const score = Number(metricCheck) + Number(planCheck) + Number(hypothesisCheck);
+
+    if (score >= 3) {
+      return {
+        level: 'excellent',
+        feedback: '你的假设可验证性很强，具备“目标-指标-动作”完整闭环。',
+        skillsDelta: { experiment: 3, planning: 2, analysis: 1 },
+        riasecDelta: { I: 2, C: 1, E: 1 },
+        scoreDelta: { analysis: 2, risk: 1, hypothesis: 4 }
+      };
+    }
+    if (score >= 2) {
+      return {
+        level: 'good',
+        feedback: '假设框架基本成立，建议补充对照组与时间窗口，提升结论可信度。',
+        skillsDelta: { experiment: 2, planning: 1, analysis: 1 },
+        riasecDelta: { I: 1, C: 1, E: 1 },
+        scoreDelta: { analysis: 1, risk: 1, hypothesis: 2 }
+      };
+    }
+    return {
+      level: 'poor',
+      feedback: '当前内容更像想法陈述，缺少可量化指标和验证动作，难以落地复盘。',
+      skillsDelta: { experiment: -1, planning: -1 },
+      riasecDelta: { E: 1 },
+      scoreDelta: { analysis: 0, risk: 0, hypothesis: 0 }
+    };
+  }
+
+  return {
+    level: 'good',
+    feedback: '系统已记录当前操作。',
+    skillsDelta: {},
+    riasecDelta: {},
+    scoreDelta: { analysis: 0, risk: 0, hypothesis: 0 }
+  };
+}
+
+function buildProductDetectiveLocalResult(pdState) {
+  const riasecDelta = pdState?.accumRiasec ?? {};
+  const skillDelta = pdState?.accumSkills ?? {};
+  const score = pdState?.score ?? { analysis: 0, risk: 0, hypothesis: 0 };
+  const usedSec = clamp(PRODUCT_DETECTIVE_TIME_LIMIT_SEC - Number(pdState?.remainingSec ?? 0), 0, PRODUCT_DETECTIVE_TIME_LIMIT_SEC);
+
+  const pct = {
+    R: 42,
+    I: clamp(52 + Number(riasecDelta.I ?? 0) * 5, 20, 95),
+    A: 40,
+    S: 38,
+    E: clamp(50 + Number(riasecDelta.E ?? 0) * 4, 20, 95),
+    C: clamp(54 + Number(riasecDelta.C ?? 0) * 5, 20, 95)
+  };
+
+  const skillPct = {
+    analysis: clamp(52 + Number(skillDelta.analysis ?? 0) * 7, 15, 98),
+    risk_control: clamp(50 + Number(skillDelta.risk_control ?? 0) * 7, 15, 98),
+    experiment: clamp(48 + Number(skillDelta.experiment ?? 0) * 8, 10, 98),
+    planning: clamp(48 + Number(skillDelta.planning ?? 0) * 7, 10, 98),
+    data_literacy: clamp(46 + Number(skillDelta.data_literacy ?? 0) * 7, 10, 98),
+    process: clamp(46 + Number(skillDelta.process ?? 0) * 6, 10, 98)
+  };
+
+  const strong = [];
+  if (score.analysis >= 7) strong.push('分析深度');
+  if (score.risk >= 6) strong.push('风险意识');
+  if (score.hypothesis >= 5) strong.push('假设可验证性');
+  const strengthText = strong.length ? strong.join('、') : '基础执行';
+
+  const matchedRole =
+    score.analysis + score.risk >= 14
+      ? '产品开发（选品策略）'
+      : score.hypothesis >= 6
+        ? '产品运营（增长试验）'
+        : '商品运营（执行推进）';
+
+  const summary = [
+    `你在“选品侦探”中用时 ${usedSec} 秒，当前优势为：${strengthText}。`,
+    `分析分=${score.analysis}，风险分=${score.risk}，假设分=${score.hypothesis}。`,
+    '建议继续训练“评论信号归因 + 利润测算 + AB验证”三段闭环。'
+  ].join('\n');
+
+  const skillNotes = [
+    '进阶建议：',
+    '1) 先做竞品拆解表（价格/成本/评价风险/复购）。',
+    '2) 再做 7 天小流量测试，明确对照组和样本量。',
+    '3) 每天复盘一个“假设是否成立”的证据点。'
+  ].join('\n');
+
+  return {
+    id: `local-product-detective-${Date.now()}`,
+    localOnly: true,
+    pct,
+    skills: { pct: skillPct },
+    recommendations: {
+      matchedRole,
+      summary,
+      skillNotes
+    }
+  };
 }
 
 // Expose to existing inline prototype scripts
@@ -387,6 +646,266 @@ window.CareerVerse = {
     coachAbort: null
   },
 
+  productDetective: {
+    index: 0,
+    scenes: PRODUCT_DETECTIVE_SCENES,
+    pickedByQuestionId: new Map(),
+    draftsByQuestionId: new Map(),
+    evaluationsByQuestionId: new Map(),
+    accumSkills: {},
+    accumRiasec: {},
+    score: { analysis: 0, risk: 0, hypothesis: 0 },
+    remainingSec: PRODUCT_DETECTIVE_TIME_LIMIT_SEC,
+    timer: null,
+    coachAbort: null
+  },
+
+  _pdFormatTime(sec) {
+    const safe = Math.max(0, Number(sec ?? 0));
+    const mm = String(Math.floor(safe / 60)).padStart(2, '0');
+    const ss = String(safe % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+  },
+
+  _pdStopTimer() {
+    if (this.productDetective.timer) {
+      clearInterval(this.productDetective.timer);
+      this.productDetective.timer = null;
+    }
+  },
+
+  _pdSyncHeader() {
+    setText('cv-pd-timer', this._pdFormatTime(this.productDetective.remainingSec));
+    const total = this.productDetective.scenes.length;
+    setText('cv-pd-progress', `SCENE ${this.productDetective.index + 1}/${total}`);
+    setText('cv-pd-score-analysis', String(this.productDetective.score.analysis ?? 0));
+    setText('cv-pd-score-risk', String(this.productDetective.score.risk ?? 0));
+    setText('cv-pd-score-hypothesis', String(this.productDetective.score.hypothesis ?? 0));
+  },
+
+  _pdRecalcScoreAndDeltas() {
+    let accumSkills = {};
+    let accumRiasec = {};
+    let score = { analysis: 0, risk: 0, hypothesis: 0 };
+    for (const ev of this.productDetective.evaluationsByQuestionId.values()) {
+      accumSkills = addSkillDelta(accumSkills, ev?.skillsDelta);
+      accumRiasec = addSkillDelta(accumRiasec, ev?.riasecDelta);
+      score.analysis += Number(ev?.scoreDelta?.analysis ?? 0);
+      score.risk += Number(ev?.scoreDelta?.risk ?? 0);
+      score.hypothesis += Number(ev?.scoreDelta?.hypothesis ?? 0);
+    }
+    this.productDetective.accumSkills = accumSkills;
+    this.productDetective.accumRiasec = accumRiasec;
+    this.productDetective.score = score;
+  },
+
+  startProductDetective() {
+    this._pdStopTimer();
+    try {
+      this.productDetective.coachAbort?.abort?.();
+    } catch {}
+    try {
+      this.scenario.coachAbort?.abort?.();
+    } catch {}
+    try {
+      this.dataOps.coachAbort?.abort?.();
+    } catch {}
+
+    this.productDetective.index = 0;
+    this.productDetective.pickedByQuestionId = new Map();
+    this.productDetective.draftsByQuestionId = new Map();
+    this.productDetective.evaluationsByQuestionId = new Map();
+    this.productDetective.accumSkills = {};
+    this.productDetective.accumRiasec = {};
+    this.productDetective.score = { analysis: 0, risk: 0, hypothesis: 0 };
+    this.productDetective.remainingSec = PRODUCT_DETECTIVE_TIME_LIMIT_SEC;
+    this.productDetective.coachAbort = null;
+
+    const fb = document.getElementById('cv-pd-feedback');
+    if (fb) {
+      fb.classList.add('hidden');
+      fb.textContent = '';
+    }
+
+    this._pdSyncHeader();
+    window.switchScreen?.('screen-product-detective');
+    this._renderProductDetective();
+
+    this.productDetective.timer = setInterval(() => {
+      this.productDetective.remainingSec -= 1;
+      this._pdSyncHeader();
+      if (this.productDetective.remainingSec <= 0) {
+        this._pdFinalize(true);
+      }
+    }, 1000);
+  },
+
+  _renderProductDetective() {
+    const pd = this.productDetective;
+    const scene = pd.scenes[pd.index];
+    if (!scene) return;
+    const promptEl = document.getElementById('cv-pd-prompt');
+    const optionsEl = document.getElementById('cv-pd-options');
+    const feedbackEl = document.getElementById('cv-pd-feedback');
+    const nextLabelEl = document.getElementById('cv-pd-next');
+    this._pdSyncHeader();
+
+    if (promptEl) promptEl.textContent = scene.prompt;
+    if (nextLabelEl) nextLabelEl.textContent = pd.index === pd.scenes.length - 1 ? '结算报告' : '下一幕';
+
+    const picked = pd.pickedByQuestionId.get(scene.id);
+    const ev = pd.evaluationsByQuestionId.get(scene.id);
+    if (feedbackEl) {
+      if (!picked || !ev) {
+        feedbackEl.classList.add('hidden');
+        feedbackEl.textContent = '';
+      } else {
+        const extra = formatDelta(ev.skillsDelta);
+        feedbackEl.classList.remove('hidden');
+        feedbackEl.textContent = `[${ev.level}] ${ev.feedback}${extra ? `（技能：${extra}）` : ''}`;
+      }
+    }
+
+    if (!optionsEl) return;
+    if (scene.type === 'single') {
+      optionsEl.innerHTML = (scene.options ?? [])
+        .map((o) => {
+          const selected = picked === o.id;
+          return `
+            <button class="skew-box btn-hacker py-5 text-lg text-left pl-6 group ${selected ? 'border-emerald-400' : ''}" onclick="window.CareerVerse?.pdPick?.('${scene.id}','${o.id}')">
+              <span class="unskew-text flex items-center gap-3">
+                <span class="bg-cyan-400 text-black px-2 py-1 text-sm font-bold rounded font-[monospace]">${o.id}</span>
+                ${escapeHtml(o.label)}
+              </span>
+            </button>
+          `;
+        })
+        .join('');
+      return;
+    }
+
+    if (scene.type === 'fill') {
+      const fields = scene.options?.fields ?? [];
+      const saved = picked?.fields ?? {};
+      const draft = pd.draftsByQuestionId.get(scene.id)?.fields ?? saved;
+      optionsEl.innerHTML = `
+        <div class="bg-black/50 border border-white/10 p-4 mb-4 lg:col-span-3">
+          <div class="text-gray-400 text-sm font-[monospace]">TASK: HYPOTHESIS SUBMIT</div>
+          <div class="text-white text-xl font-bold">写清楚“假设 + 指标 + 验证动作”，系统将评估可验证性。</div>
+        </div>
+        <div class="grid grid-cols-1 gap-4 lg:col-span-3" data-cv-task="fill">
+          ${fields
+            .map((f) => {
+              const v = String(draft?.[f.key] ?? '');
+              return `
+                <label class="block">
+                  <div class="text-gray-300 text-sm mb-2 font-[monospace]">${escapeHtml(f.label)}</div>
+                  <textarea
+                    class="w-full px-4 py-3 rounded bg-black/70 border border-white/10 text-lg min-h-[84px]"
+                    placeholder="${escapeHtml(f.placeholder ?? '')}"
+                    oninput="window.CareerVerse?.pdSetField?.('${scene.id}','${f.key}', this.value)"
+                  >${escapeHtml(v)}</textarea>
+                </label>
+              `;
+            })
+            .join('')}
+        </div>
+        <div class="mt-4 flex justify-end lg:col-span-3">
+          <button class="btn-p5 px-8 py-3 text-xl font-bold skew-box" onclick="window.CareerVerse?.pdConfirmFill?.('${scene.id}')">
+            <span class="unskew-text">提交选品假设</span>
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    optionsEl.innerHTML = `<div class="text-gray-400">Unsupported task: ${escapeHtml(scene.type)}</div>`;
+  },
+
+  _pdApplyEvaluation(scene, value) {
+    const ev = evaluateProductDetectiveScene(scene.id, value);
+    this.productDetective.evaluationsByQuestionId.set(scene.id, ev);
+    this._pdRecalcScoreAndDeltas();
+    this._pdSyncHeader();
+    this._renderProductDetective();
+
+    this._streamCoachToPanel({
+      coachTextId: 'cv-pd-coach-text',
+      coachAvatarId: 'cv-pd-coach-avatar',
+      moodLevel: ev.level ?? 'good',
+      storeKey: 'productDetective',
+      payload: {
+        moduleSlug: 'ecom-product-detective',
+        scenePrompt: scene.prompt,
+        sceneIndex: this.productDetective.index,
+        sceneTotal: this.productDetective.scenes.length,
+        answerSummary: summarizeAnswer(scene, value),
+        evaluation: ev
+      }
+    });
+  },
+
+  pdPick(sceneId, optionId) {
+    const scene = this.productDetective.scenes[this.productDetective.index];
+    if (!scene || scene.id !== sceneId || scene.type !== 'single') return;
+    this.productDetective.pickedByQuestionId.set(sceneId, optionId);
+    this._pdApplyEvaluation(scene, optionId);
+  },
+
+  pdSetField(sceneId, key, value) {
+    const scene = this.productDetective.scenes[this.productDetective.index];
+    if (!scene || scene.id !== sceneId || scene.type !== 'fill') return;
+    const prev = this.productDetective.draftsByQuestionId.get(scene.id)?.fields ?? {};
+    const next = { ...prev, [key]: value };
+    this.productDetective.draftsByQuestionId.set(scene.id, { fields: next });
+  },
+
+  pdConfirmFill(sceneId) {
+    const scene = this.productDetective.scenes[this.productDetective.index];
+    if (!scene || scene.id !== sceneId || scene.type !== 'fill') return;
+    const fields = this.productDetective.draftsByQuestionId.get(scene.id)?.fields ?? {};
+    const defs = scene.options?.fields ?? [];
+    const completed = defs.filter((f) => String(fields?.[f.key] ?? '').trim().length >= 4).length;
+    if (completed < defs.length) return;
+    const value = { fields };
+    this.productDetective.pickedByQuestionId.set(scene.id, value);
+    this._pdApplyEvaluation(scene, value);
+  },
+
+  pdBack() {
+    if (!this.productDetective.scenes.length) return;
+    this.productDetective.index = Math.max(0, this.productDetective.index - 1);
+    this._renderProductDetective();
+  },
+
+  pdNext() {
+    const scene = this.productDetective.scenes[this.productDetective.index];
+    if (!scene) return;
+    const picked = this.productDetective.pickedByQuestionId.get(scene.id);
+    if (!picked) return;
+
+    if (this.productDetective.index < this.productDetective.scenes.length - 1) {
+      this.productDetective.index += 1;
+      this._renderProductDetective();
+      return;
+    }
+    this._pdFinalize(false);
+  },
+
+  _pdFinalize(isTimeout) {
+    if (!this.productDetective.scenes.length) return;
+    this._pdStopTimer();
+    if (isTimeout) this.productDetective.remainingSec = 0;
+
+    const result = buildProductDetectiveLocalResult(this.productDetective);
+    if (isTimeout) {
+      const extra = '\n注意：本次在倒计时结束后自动结算，建议补全最后一幕的假设提交。';
+      result.recommendations.summary = `${result.recommendations.summary}${extra}`;
+    }
+    this.state.lastResult = result;
+    window.switchScreen?.('screen-report-generic');
+  },
+
   startCreativeLab() {
     this._startScenario({
       mode: 'creative',
@@ -414,6 +933,10 @@ window.CareerVerse = {
   },
 
   async _startScenario(cfg) {
+    this._pdStopTimer();
+    try {
+      this.productDetective.coachAbort?.abort?.();
+    } catch {}
     try {
       this.scenario.coachAbort?.abort?.();
     } catch {}
@@ -467,20 +990,25 @@ window.CareerVerse = {
     };
   },
 
+  _coachCanvasId(coachAvatarId) {
+    return coachAvatarId === 'cv-cre-coach-avatar'
+      ? 'cv-cre-coach-3d'
+      : coachAvatarId === 'cv-fr-coach-avatar'
+        ? 'cv-fr-coach-3d'
+        : coachAvatarId === 'cv-dataops-coach-avatar'
+          ? 'cv-dataops-coach-3d'
+          : coachAvatarId === 'cv-pd-coach-avatar'
+            ? 'cv-pd-coach-3d'
+            : null;
+  },
+
   _streamCoachToPanel({ coachTextId, coachAvatarId, payload, moodLevel, storeKey }) {
     const textEl = document.getElementById(coachTextId);
     const avatarEl = document.getElementById(coachAvatarId);
     if (avatarEl) setCoachMood(avatarEl, moodLevel);
     // Sync to 3D coach if available (canvasId is derived from avatar id)
     if (window.CVCoach3D?.setMood) {
-      const canvasId =
-        coachAvatarId === 'cv-cre-coach-avatar'
-          ? 'cv-cre-coach-3d'
-          : coachAvatarId === 'cv-fr-coach-avatar'
-            ? 'cv-fr-coach-3d'
-            : coachAvatarId === 'cv-dataops-coach-avatar'
-              ? 'cv-dataops-coach-3d'
-              : null;
+      const canvasId = this._coachCanvasId(coachAvatarId);
       if (canvasId) window.CVCoach3D.setMood(canvasId, moodLevel);
       if (canvasId && window.CVCoach3D?.emote) {
         const emote = moodLevel === 'excellent' ? 'nod' : moodLevel === 'poor' ? 'shake' : 'point';
@@ -500,17 +1028,15 @@ window.CareerVerse = {
         this.dataOps.coachAbort?.abort?.();
       } catch {}
       this.dataOps.coachAbort = abort;
+    } else if (storeKey === 'productDetective') {
+      try {
+        this.productDetective.coachAbort?.abort?.();
+      } catch {}
+      this.productDetective.coachAbort = abort;
     }
 
     if (window.CVCoach3D?.setTalking) {
-      const canvasId =
-        coachAvatarId === 'cv-cre-coach-avatar'
-          ? 'cv-cre-coach-3d'
-          : coachAvatarId === 'cv-fr-coach-avatar'
-            ? 'cv-fr-coach-3d'
-            : coachAvatarId === 'cv-dataops-coach-avatar'
-              ? 'cv-dataops-coach-3d'
-              : null;
+      const canvasId = this._coachCanvasId(coachAvatarId);
       if (canvasId) window.CVCoach3D.setTalking(canvasId, true);
     }
 
@@ -524,14 +1050,7 @@ window.CareerVerse = {
         if (!textEl) return;
         textEl.textContent += chunk;
         if (window.CVCoach3D?.bump) {
-          const canvasId =
-            coachAvatarId === 'cv-cre-coach-avatar'
-              ? 'cv-cre-coach-3d'
-              : coachAvatarId === 'cv-fr-coach-avatar'
-                ? 'cv-fr-coach-3d'
-                : coachAvatarId === 'cv-dataops-coach-avatar'
-                  ? 'cv-dataops-coach-3d'
-                  : null;
+          const canvasId = this._coachCanvasId(coachAvatarId);
           if (canvasId) window.CVCoach3D.bump(canvasId, chunk);
           // Section-aware gestures: reinforce "亮点/改进/下一步" in real time.
           rolling = (rolling + String(chunk)).slice(-80);
@@ -552,14 +1071,7 @@ window.CareerVerse = {
     })
       .then(() => {
         if (window.CVCoach3D?.setTalking) {
-          const canvasId =
-            coachAvatarId === 'cv-cre-coach-avatar'
-              ? 'cv-cre-coach-3d'
-              : coachAvatarId === 'cv-fr-coach-avatar'
-                ? 'cv-fr-coach-3d'
-                : coachAvatarId === 'cv-dataops-coach-avatar'
-                  ? 'cv-dataops-coach-3d'
-                  : null;
+          const canvasId = this._coachCanvasId(coachAvatarId);
           if (canvasId) window.CVCoach3D.setTalking(canvasId, false);
         }
       })
@@ -572,14 +1084,7 @@ window.CareerVerse = {
         if (textEl) textEl.textContent = 'AI教练暂时离线。';
       }
       if (window.CVCoach3D?.setTalking) {
-        const canvasId =
-          coachAvatarId === 'cv-cre-coach-avatar'
-            ? 'cv-cre-coach-3d'
-            : coachAvatarId === 'cv-fr-coach-avatar'
-              ? 'cv-fr-coach-3d'
-              : coachAvatarId === 'cv-dataops-coach-avatar'
-                ? 'cv-dataops-coach-3d'
-                : null;
+        const canvasId = this._coachCanvasId(coachAvatarId);
         if (canvasId) window.CVCoach3D.setTalking(canvasId, false);
       }
     });
@@ -906,6 +1411,10 @@ window.CareerVerse = {
   },
 
   dataOpsBegin() {
+    this._pdStopTimer();
+    try {
+      this.productDetective.coachAbort?.abort?.();
+    } catch {}
     const assessment = this.state.ecomData;
     if (!assessment?.questions?.length) {
       const prompt = document.getElementById('cv-dataops-prompt');

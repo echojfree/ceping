@@ -471,6 +471,9 @@
                     <button id="cv-briefing-btn" class="btn-hacker px-4 py-2 text-sm font-bold skew-box" onclick="switchScreen('screen-briefing')">
                         <span class="unskew-text">岗位情报简报</span>
                     </button>
+                    <button id="cv-product-detective-btn" class="btn-p5 px-4 py-2 text-sm font-bold skew-box" onclick="window.CareerVerse?.startProductDetective?.()">
+                        <span class="unskew-text">选品侦探局</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -530,6 +533,94 @@
                         <h3 class="text-4xl font-bold text-white mb-2">客户服务 <span class="text-gray-400">&</span> 门店经营</h3>
                         <p class="text-md text-gray-300 border-l-4 border-green-500 pl-2">危机公关、客诉化解、O2O门店现场统筹。高情商与极强抗压能力的实战场。</p>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================================= -->
+    <!-- ==================== FLOW C: PRODUCT DETECTIVE (2.5D Shelf Intel) ==================== -->
+    <!-- ========================================================================================= -->
+    <div id="screen-product-detective" class="screen flex-col bg-[#050505] relative overflow-hidden">
+        <div class="absolute inset-0 pointer-events-none">
+            <div class="absolute top-24 left-[8%] w-[76%] h-24 border border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-transparent transform rotate-[-2deg]"></div>
+            <div class="absolute top-56 left-[11%] w-[70%] h-24 border border-violet-500/30 bg-gradient-to-r from-violet-500/10 to-transparent transform rotate-[1deg]"></div>
+            <div class="absolute top-[22rem] left-[14%] w-[64%] h-24 border border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 to-transparent transform rotate-[-1deg]"></div>
+        </div>
+
+        <div class="relative z-10 w-full p-6 flex justify-between items-start">
+            <div class="w-1/3">
+                <div class="bg-black/80 border-2 border-cyan-500 p-3 skew-box shadow-[4px_4px_0_rgba(34,211,238,0.6)]">
+                    <div class="unskew-text w-full">
+                        <div class="flex justify-between items-end mb-1">
+                            <span class="text-cyan-300 font-bold text-xl"><i class="ph-fill ph-magnifying-glass"></i> PRODUCT_DETECTIVE</span>
+                            <span class="text-gray-400 text-sm font-[monospace]" id="cv-pd-progress">SCENE 1/4</span>
+                        </div>
+                        <div class="stat-bar"><div class="stat-fill-blue" style="width: 72%;"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center bg-cyan-600 px-8 py-2 border-b-4 border-white shadow-[0_10px_20px_rgba(34,211,238,0.35)] transform scale-110">
+                <div class="text-white text-sm font-bold tracking-widest">2.5D_SHELF_INTEL · LIMITED TIME</div>
+                <div class="text-5xl font-bold text-white font-[Teko] tracking-wider" id="cv-pd-timer">04:00</div>
+            </div>
+
+            <div class="w-1/3 flex justify-end">
+                <div class="bg-black/80 border-2 border-violet-500 p-3 skew-box w-full max-w-sm shadow-[4px_4px_0_rgba(167,139,250,0.7)]">
+                    <div class="unskew-text w-full">
+                        <div class="grid grid-cols-3 gap-2 text-[10px] text-gray-300 font-[monospace] mb-2">
+                            <div>ANALYSIS</div>
+                            <div>RISK</div>
+                            <div>HYPOTHESIS</div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-xs text-white">
+                            <div id="cv-pd-score-analysis">0</div>
+                            <div id="cv-pd-score-risk">0</div>
+                            <div id="cv-pd-score-hypothesis">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="cv-pd-coach" class="absolute top-28 right-8 z-30 w-[420px] cv-holo cv-tilt p-4 cut-corner" data-cv-tilt>
+            <div class="flex items-start gap-3">
+                <div id="cv-pd-coach-avatar" class="cv-coach-avatar cv-coach-mood-good" data-cv-tilt>
+                    <canvas id="cv-pd-coach-3d" data-cv-coach3d="1" data-fallback-img="cv-pd-coach-img" class="absolute inset-0 w-full h-full"></canvas>
+                    <img id="cv-pd-coach-img" class="cv-coach-img" src="/public/avatars/cv-coach.svg" alt="AI Coach"/>
+                </div>
+                <div class="flex-1">
+                    <div class="text-xs text-cyan-300 font-[monospace] tracking-widest mb-1">AI_COACH · PRODUCT_INTEL</div>
+                    <div id="cv-pd-coach-text" class="text-sm text-gray-100 font-sans whitespace-pre-line leading-relaxed">
+                        侦探任务已载入：对比竞品、识别风险、提交可验证选品假设。
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 relative z-10 flex flex-col justify-end pb-8 px-12 mt-12">
+            <div class="bg-black/90 border-4 border-white p-8 cut-corner shadow-[15px_15px_0_rgba(34,211,238,0.45)] relative max-w-5xl mx-auto w-full backdrop-blur-md">
+                <div class="absolute -top-6 left-10 bg-white text-black font-bold text-2xl px-6 py-1 skew-box border-2 border-black">
+                    <span class="unskew-text">任务简报</span>
+                </div>
+                <p class="text-4xl text-white leading-relaxed mt-4 font-bold" id="cv-pd-prompt">
+                    Loading shelf intelligence...
+                </p>
+            </div>
+        </div>
+
+        <div class="h-auto bg-black border-t-4 border-cyan-600 z-20 p-8 flex flex-col gap-4">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="cv-pd-options"></div>
+            <div class="mt-4 flex items-center justify-between gap-4">
+                <div id="cv-pd-feedback" class="text-xl text-gray-300 border-l-4 border-cyan-500 pl-4 hidden"></div>
+                <div class="flex gap-3">
+                    <button class="btn-hacker px-8 py-3 text-xl font-bold skew-box" onclick="window.CareerVerse?.pdBack?.()">
+                        <span class="unskew-text">上一幕</span>
+                    </button>
+                    <button class="btn-p5 px-8 py-3 text-xl font-bold skew-box" onclick="window.CareerVerse?.pdNext?.()">
+                        <span class="unskew-text" id="cv-pd-next">下一幕</span>
+                    </button>
                 </div>
             </div>
         </div>
