@@ -1,0 +1,36 @@
+name: careerverse
+
+services:
+  app:
+    image: registry.cn-hangzhou.aliyuncs.com/jay-ant/evolution:latest
+    container_name: careerverse_app
+    restart: unless-stopped
+    pull_policy: always
+
+    ports:
+      - "5180:5180"
+
+    environment:
+      NODE_ENV: production
+      PORT: 5180
+      DATA_DIR: /app/data
+      BASE_URL: ${BASE_URL:-http://localhost:5180}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+
+      # Admin seed account (used on first run / empty DB)
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123456}
+
+      # OpenAI-compatible provider (optional)
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      MODEL: ${MODEL:-}
+
+      # Local Ollama fallback (optional)
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b-instruct}
+
+      TZ: ${TZ:-Asia/Shanghai}
+
+    volumes:
+      - ./data:/app/data
