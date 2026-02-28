@@ -17,11 +17,11 @@ test('role intel assistant: streaming reply renders markdown', async ({ page }) 
   await q.fill('给我一个 1 天工作流程（按小时）+ 新手易错点 + 我应该练哪些技能？');
   await send.click();
 
-  await expect(status).toHaveText(/完成|失败/, { timeout: 20_000 });
-  await expect(out).toHaveText(/.{30,}/, { timeout: 20_000 });
+  // Should succeed even if remote model is unavailable (server falls back to local markdown).
+  await expect(status).toHaveText('完成', { timeout: 20_000 });
+  await expect(out).toHaveText(/.{60,}/, { timeout: 20_000 });
 
   // Markdown should result in some structural elements (lists/code/quote).
   const mdEl = page.locator('#cv-role-ai-out ul, #cv-role-ai-out ol, #cv-role-ai-out pre, #cv-role-ai-out blockquote');
   await expect(mdEl.first()).toBeVisible({ timeout: 20_000 });
 });
-

@@ -173,12 +173,13 @@ export async function aiRoleIntelStream({ env, role, question, ageGroup, signal 
   };
   const userQuestion = String(question ?? '').slice(0, 2000);
 
+  const localOnce = () => localRoleIntelReply({ role: safeRole, question: userQuestion, ageGroup }).content;
+
   if (!hasOpenAICompatible(env)) {
-    const local = localRoleIntelReply({ role: safeRole, question: userQuestion, ageGroup });
     return {
       provider: 'local',
       stream: (async function* () {
-        yield local.content;
+        yield localOnce();
       })()
     };
   }
@@ -212,7 +213,7 @@ export async function aiRoleIntelStream({ env, role, question, ageGroup, signal 
     .filter(Boolean)
     .join('\n');
 
-  const stream = openaiStreamChat({
+  const primary = openaiStreamChat({
     baseUrl: env.OPENAI_BASE_URL,
     apiKey: env.OPENAI_API_KEY,
     model: env.OPENAI_MODEL || env.OLLAMA_MODEL,
@@ -223,6 +224,21 @@ export async function aiRoleIntelStream({ env, role, question, ageGroup, signal 
     temperature: 0.6,
     signal
   });
+
+  const stream = (async function* () {
+    try {
+      for await (const chunk of primary) {
+        yield chunk;
+      }
+    } catch (err) {
+      // If client disconnects, stop silently.
+      if (signal?.aborted) return;
+
+      const fallback = localOnce();
+      yield '\n\n---\n\n> 模型暂不可用，已切换本地情报模式（内容仍可用于学习与练习）。\n\n';
+      yield fallback;
+    }
+  })();
 
   return { provider: 'openai_compatible', stream };
 }
